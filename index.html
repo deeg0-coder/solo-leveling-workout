@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SOLO LEVELING SYSTEM — Workout</title>
+<meta name="description" content="Solo Leveling System Workout: ежедневные задания, XP, рост рангов, сила, стрек. Реальная жизнь — RPG.">
+<meta name="theme-color" content="#0a0e23">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234fc3f7'/%3E%3Cstop offset='1' stop-color='%237c4dff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%230a0e23'/%3E%3Cpath d='M32 6 56 26 32 58 8 26Z' fill='none' stroke='url(%23g)' stroke-width='5'/%3E%3Cpath d='M32 22 40 32 32 46 24 32Z' fill='%23ffd54f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300;0,400;0,600;0,700;0,800;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="fx">
+  <div class="fx-aura"></div>
+  <div class="fx-grid"></div>
+  <div class="fx-vignette"></div>
+</div>
+
+<!-- ======== WAKE SCREEN ======== -->
+<div id="wake" class="wake">
+  <div class="wake-gate"><span class="gate-symbol">✦</span></div>
+  <h1 class="wake-title">LEVEL UP SYSTEM</h1>
+  <p class="wake-sub">"Пожалуйста, зайдите в систему."</p>
+  <input id="hunterNameInput" class="wake-input" type="text" maxlength="18" placeholder="Введите своё имя..." />
+  <button id="btnAwaken" class="btn btn-primary wake-btn" disabled>ПРОСНУТЬСЯ</button>
+  <button id="btnContinue" class="wake-continue" hidden>Продолжить как <b></b></button>
+  <div class="wake-meta">
+    <span class="wake-meta-item">E-RANK</span>
+    <span class="wake-meta-item">Уровни 1</span>
+    <span class="wake-meta-item">Quest-Log v2.0</span>
+  </div>
+</div>
+
+<div id="app" hidden>
+
+  <!-- ======== HEADER ======== -->
+  <header class="hud">
+    <div class="hud-top">
+      <div class="hud-id">
+        <div class="rank-badge" id="rankBadge">E</div>
+        <div class="hud-name">
+          <span id="hunterName">Хантер</span>
+          <span class="hud-level">Уровень <b id="lvlNum">1</b></span>
+        </div>
+      </div>
+      <div class="hud-xp">
+        <div class="hud-xp-row"><span>EXP</span><span id="xpText">0 / 0</span></div>
+        <div class="xp-track"><i id="xpFill"></i></div>
+        <div class="hud-streak" id="streakChip">🔥 0</div>
+      </div>
+    </div>
+    <div class="hud-date" id="hudDate">--</div>
+  </header>
+
+  <!-- ======== MAIN ======== -->
+  <main class="views">
+
+    <!-- QUESTS -->
+    <section class="view" id="view-quests">
+      <div class="quest-status card">
+        <div class="qs-left">
+          <span class="qs-label" id="qsLabel">ДНЕВНОЕ ЗАДАНИЕ</span>
+          <span class="qs-title" id="qsTitle">Пожалуйста, заходите в систему</span>
+        </div>
+        <div class="qs-ring" id="qsRing">
+          <div class="qs-ring-in"><b id="qsPct">0%</b><span>выполнено</span></div>
+        </div>
+      </div>
+
+      <div class="card quests-wrap" id="questsList"></div>
+      <button class="btn-outline add-quest-btn" id="btnAddQuest">+ Новое задание</button>
+    </section>
+
+    <!-- RANK / STATS -->
+    <section class="view" id="view-rank">
+      <div class="card rank-hero">
+        <div class="rank-hero-left">
+          <div class="rank-big" id="rankBig">E</div>
+        </div>
+        <div class="rank-hero-right">
+          <span class="qs-kicker">ТЕКУЩИЙ РАНГ</span>
+          <div class="rank-name" id="rankName">Охотник E-Ранга</div>
+          <div class="rank-desc" id="rankDesc"></div>
+          <div class="rank-xpbar"><i id="rankXpFill"></i></div>
+          <div class="rank-progress" id="rankProgress"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">ПУТЬ ХАНТЕРА <span class="chip">E → SS</span></div>
+        <div class="rank-path" id="rankPath"></div>
+      </div>
+
+      <div class="card">
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-icon" style="--c:#ff5f57">💪</div>
+            <div class="stat-name">СИЛА</div>
+            <b class="stat-num" id="stStrength">0</b>
+          </div>
+          <div class="stat">
+            <div class="stat-icon" style="--c:#5dc9ff">⚡</div>
+            <div class="stat-name">СКОРОСТЬ</div>
+            <b class="stat-num" id="stSpeed">0</b>
+          </div>
+          <div class="stat">
+            <div class="stat-icon" style="--c:#4bd37b">❤️</div>
+            <div class="stat-name">ВЫНОСЛИВОСТЬ</div>
+            <b class="stat-num" id="stEndurance">0</b>
+          </div>
+          <div class="stat">
+            <div class="stat-icon" style="--c:#b388ff">🧠</div>
+            <div class="stat-name">ИНТЕЛЛЕКТ</div>
+            <b class="stat-num" id="stWisdom">0</b>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">ЛИЧНАЯ СТАТИСТИКА</div>
+        <div class="stat-rows">
+          <div class="srow"><span>Всего XP</span><b id="sTotalXp">0</b></div>
+          <div class="srow"><span>Выполнено заданий</span><b id="sQuestsDone">0</b></div>
+          <div class="srow"><span>Выполнено упражнений</span><b id="sWorkouts">0</b></div>
+          <div class="srow"><span>Прочитано страниц</span><b id="sPages">0</b></div>
+          <div class="srow"><span>Серия дней</span><b id="sStreak">0</b></div>
+          <div class="srow"><span>Лучший стрик</span><b id="sBestStreak">0</b></div>
+          <div class="srow"><span>Идеальных дней</span><b id="sPerfect">0</b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">XP ЗА 14 ДНЕЙ</div>
+        <canvas id="chart" height="130"></canvas>
+      </div>
+    </section>
+
+    <!-- ACHIEVEMENTS -->
+    <section class="view" id="view-ach">
+      <div class="card">
+        <div class="card-title">ДОСТИЖЕНИЯ <span class="chip" id="achCounter">0/0</span></div>
+        <div class="ach-grid" id="achGrid"></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-set">
+      <div class="card">
+        <div class="card-title">Профиль</div>
+        <div class="set-row"><span>Имя охотника</span><input id="setName" class="set-input" maxlength="18"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Настройки</div>
+        <div class="set-row"><span>Звуки</span>
+          <label class="switch"><input type="checkbox" id="setSound" checked><i></i></label>
+        </div>
+        <div class="set-row"><span>Вибрация</span>
+          <label class="switch"><input type="checkbox" id="setVibr" checked><i></i></label>
+        </div>
+        <div class="set-row"><span>Язык</span>
+          <select class="setp" id="setLang"><option value="ru">Русский</option><option value="en">English</option></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Данные</div>
+        <div class="set-row"><span>Экспорт данных</span><button class="btn-sm" id="btnExport">.JSON</button></div>
+        <div class="set-row"><span>Импорт данных</span><button class="btn-sm" id="btnImport">Загрузить</button></div>
+        <input type="file" id="importFile" accept=".json" hidden>
+        <div class="set-row danger-row"><span>Сбросить прогресс</span><button class="btn-sm danger" id="btnReset">Сбросить</button></div>
+      </div>
+
+      <p class="footnote">Solo Leveling System Workout · Fan recreation. Не является официальным продуктом. Данные хранятся только на этом устройстве (localStorage).</p>
+    </section>
+  </main>
+
+  <!-- ======== PM ======== -->
+  <nav class="tabbar">
+    <button class="tab active" data-tab="quests"><i class="ticon">📜</i><span>ЗАДАЧИ</span></button>
+    <button class="tab" data-tab="rank"><i class="ticon">🏆</i><span>РАНГ</span></button>
+    <button class="tab" data-tab="ach"><i class="ticon">🎖️</i><span>НАГРАДЫ</span></button>
+    <button class="tab" data-tab="set"><i class="ticon">⚙️</i><span>НАСТРОЙКИ</span></button>
+  </nav>
+
+</div>
+
+<!-- ======== LEVEL UP OVERLAY ======== -->
+<div id="overlay" class="overlay" hidden>
+  <div class="overlay-card">
+    <div class="lv-stars" id="lvStars"></div>
+    <div class="lv-kicker" id="lvKicker">УРОВЕНЬ ПОВЫШЕН</div>
+    <div class="lv-title" id="lvTitle">LEVEL UP</div>
+    <div class="lv-sub" id="lvSub">Новый уровень достигнут</div>
+    <button class="btn-primary" id="btnOverlayClose">Продолжить</button>
+  </div>
+</div>
+
+<div id="toasts" class="toasts"></div>
+
+<canvas id="confetti" class="confetti"></canvas>
+
+<script src="js/i18n.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
