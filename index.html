@@ -27,7 +27,6 @@
   <p class="wake-sub">"Пожалуйста, зайдите в систему."</p>
   <input id="hunterNameInput" class="wake-input" type="text" maxlength="18" placeholder="Введите своё имя..." />
   <button id="btnAwaken" class="btn btn-primary wake-btn" disabled>ПРОСНУТЬСЯ</button>
-  <button id="btnContinue" class="wake-continue" hidden>Продолжить как <b></b></button>
   <div class="wake-meta">
     <span class="wake-meta-item">E-RANK</span>
     <span class="wake-meta-item">Уровни 1</span>
@@ -44,13 +43,17 @@
         <div class="rank-badge" id="rankBadge">E</div>
         <div class="hud-name">
           <span id="hunterName">Хантер</span>
+          <span class="hud-title-chip" id="hunterTitle"></span>
           <span class="hud-level">Уровень <b id="lvlNum">1</b></span>
         </div>
       </div>
       <div class="hud-xp">
         <div class="hud-xp-row"><span>EXP</span><span id="xpText">0 / 0</span></div>
         <div class="xp-track"><i id="xpFill"></i></div>
-        <div class="hud-streak" id="streakChip">🔥 0</div>
+        <div class="hud-flags">
+          <span class="hud-chip" id="streakChip">🔥 0</span>
+          <span class="hud-chip gold" id="coinBadge">🪙 0</span>
+        </div>
       </div>
     </div>
     <div class="hud-date" id="hudDate">--</div>
@@ -71,11 +74,20 @@
         </div>
       </div>
 
+      <div id="hiddenQuest" hidden></div>
+
       <div class="card quests-wrap" id="questsList"></div>
       <button class="btn-outline add-quest-btn" id="btnAddQuest">+ Новое задание</button>
     </section>
 
-    <!-- RANK / STATS -->
+    <!-- TRAIN -->
+    <section class="view" id="view-train">
+      <div class="card focus-card" id="focusBox"></div>
+      <div class="card" id="trainIface"></div>
+      <p class="footnote">Каждый подход синхронизируется с ежедневным заданием. Личные рекорды — автоматически.</p>
+    </section>
+
+    <!-- RANK -->
     <section class="view" id="view-rank">
       <div class="card rank-hero">
         <div class="rank-hero-left">
@@ -91,24 +103,25 @@
       </div>
 
       <div class="card">
-        <div class="card-title">ПУТЬ ХАНТЕРА <span class="chip">E → SS</span></div>
+        <div class="card-title">ПУТЬ ОХОТНИКА <span class="chip">E → SS</span></div>
         <div class="rank-path" id="rankPath"></div>
       </div>
 
       <div class="card">
+        <div class="card-title">ХАРАКТЕРИСТИКИ <span class="chip gold" id="skillPoints">💡 0</span></div>
         <div class="stats-grid">
           <div class="stat">
-            <div class="stat-icon" style="--c:#ff5f57">💪</div>
+            <div class="stat-icon" style="--c:#ff5f57">⚔️</div>
             <div class="stat-name">СИЛА</div>
             <b class="stat-num" id="stStrength">0</b>
           </div>
           <div class="stat">
-            <div class="stat-icon" style="--c:#5dc9ff">⚡</div>
+            <div class="stat-icon" style="--c:#5dc9ff">🏃</div>
             <div class="stat-name">СКОРОСТЬ</div>
             <b class="stat-num" id="stSpeed">0</b>
           </div>
           <div class="stat">
-            <div class="stat-icon" style="--c:#4bd37b">❤️</div>
+            <div class="stat-icon" style="--c:#4bd37b">🛡️</div>
             <div class="stat-name">ВЫНОСЛИВОСТЬ</div>
             <b class="stat-num" id="stEndurance">0</b>
           </div>
@@ -118,6 +131,8 @@
             <b class="stat-num" id="stWisdom">0</b>
           </div>
         </div>
+        <div class="card-title small-title">ОЧКИ НАВЫКОВ</div>
+        <div id="skillRows"></div>
       </div>
 
       <div class="card">
@@ -125,11 +140,12 @@
         <div class="stat-rows">
           <div class="srow"><span>Всего XP</span><b id="sTotalXp">0</b></div>
           <div class="srow"><span>Выполнено заданий</span><b id="sQuestsDone">0</b></div>
-          <div class="srow"><span>Выполнено упражнений</span><b id="sWorkouts">0</b></div>
+          <div class="srow"><span>Тренировок (подходов)</span><b id="sWorkouts">0</b></div>
           <div class="srow"><span>Прочитано страниц</span><b id="sPages">0</b></div>
           <div class="srow"><span>Серия дней</span><b id="sStreak">0</b></div>
           <div class="srow"><span>Лучший стрик</span><b id="sBestStreak">0</b></div>
           <div class="srow"><span>Идеальных дней</span><b id="sPerfect">0</b></div>
+          <div class="srow"><span>Скрытые задания</span><b id="sHidden">0</b></div>
         </div>
       </div>
 
@@ -137,14 +153,26 @@
         <div class="card-title">XP ЗА 14 ДНЕЙ</div>
         <canvas id="chart" height="130"></canvas>
       </div>
-    </section>
 
-    <!-- ACHIEVEMENTS -->
-    <section class="view" id="view-ach">
+      <div class="card">
+        <div class="card-title">КАЛЕНДАРЬ</div>
+        <div id="calendar"></div>
+      </div>
+
       <div class="card">
         <div class="card-title">ДОСТИЖЕНИЯ <span class="chip" id="achCounter">0/0</span></div>
         <div class="ach-grid" id="achGrid"></div>
       </div>
+    </section>
+
+    <!-- SHOP -->
+    <section class="view" id="view-shop">
+      <div class="card wallet">
+        <span class="qs-kicker">КОШЕЛЁК</span>
+        <div class="wallet-coins">🪙 <b id="shopCoins">0</b> <em id="shopCoinsLabel">монет</em></div>
+      </div>
+      <div class="card" id="shopGrid"></div>
+      <p class="footnote">Монеты начисляются за задания, идеальные дни и скрытые квесты. Темы меняют цвет портала.</p>
     </section>
 
     <!-- SETTINGS -->
@@ -163,7 +191,7 @@
           <label class="switch"><input type="checkbox" id="setVibr" checked><i></i></label>
         </div>
         <div class="set-row"><span>Язык</span>
-          <select class="setp" id="setLang"><option value="ru">Русский</option><option value="en">English</option></select>
+          <select class="set-input" id="setLang"><option value="ru">Русский</option><option value="en">English</option></select>
         </div>
       </div>
 
@@ -179,11 +207,12 @@
     </section>
   </main>
 
-  <!-- ======== PM ======== -->
+  <!-- ======== TABBAR ======== -->
   <nav class="tabbar">
     <button class="tab active" data-tab="quests"><i class="ticon">📜</i><span>ЗАДАЧИ</span></button>
+    <button class="tab" data-tab="train"><i class="ticon">🏋️</i><span>ТРЕНИРОВКА</span></button>
     <button class="tab" data-tab="rank"><i class="ticon">🏆</i><span>РАНГ</span></button>
-    <button class="tab" data-tab="ach"><i class="ticon">🎖️</i><span>НАГРАДЫ</span></button>
+    <button class="tab" data-tab="shop"><i class="ticon">🛒</i><span>МАГАЗИН</span></button>
     <button class="tab" data-tab="set"><i class="ticon">⚙️</i><span>НАСТРОЙКИ</span></button>
   </nav>
 
@@ -208,5 +237,7 @@
 <script src="js/audio.js"></script>
 <script src="js/data.js"></script>
 <script src="js/app.js"></script>
+<script src="js/train.js"></script>
+<script src="js/shop.js"></script>
 </body>
 </html>

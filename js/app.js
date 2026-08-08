@@ -1,79 +1,82 @@
 /* ============================================================
-   app.js — main app logic
+   app.js — main app logic (v2: skills, coins, hidden, shop)
 ============================================================ */
 const $ = (sel, el) => (el || document).querySelector(sel);
 const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
 
 let S = null;
-function load() { S = loadStore() || JSON.parse(JSON.stringify(S_STORE)); }
+
+/* ---------- persistence ---------- */
 function save() {
   try { if (S && S.name) localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { /* quota */ }
 }
 
 /* ---------- date ---------- */
 function todayStr() { return dayKey(new Date()); }
-function shiftDay(n) { const d = new Date(); d.setDate(d.getDate() + n); return dayKey(d); }
+
 function locDate() {
   const o = { weekday: "long", day: "numeric", month: "long" };
   return new Date().toLocaleDateString(S.lang === "en" ? "en-US" : "ru-RU", o);
 }
 
-/* ---------- xp / level / ranks ---------- */
+/* ---------- level / ranks ---------- */
 function lvl() { return levelFromXp(S.xp); }
 function rankIdx() { return rankIndexFromXp(S.xp); }
 function rank() { return RANKS[rankIdx()]; }
 
 /* ---------- quest counters ---------- */
 function dayDone() {
-  if (!S.doneToday[todayStr()]) S.doneToday[todayStr()] = {};
-  return S.doneToday[todayStr()];
+  const k = todayStr();
+  if (!S.doneToday[k]) S.doneToday[k] = {};
+  return S.doneToday[k];
 }
-function qCount(qid) { return (dayDone()[qid] || 0); }
+function qCount(qid) { return dayDone()[qid] || 0; }
 function qSet(qid, v) { dayDone()[qid] = v; }
-function questsDoneTodayCount() { return (S.quests || []).filter(q => qCount(q.id) >= q.target).length; }
+function questById(qid) { return (S.quests || []).find(q => q.id === qid); }
 
-/* ---------- stats ---------- */
+/* ---------- stats with skills ---------- */
 function hunterStats() {
   const c = S.counters || {};
   const lv = lvl();
+  const sk = S.skills || {};
   return {
-    power: Math.round(lv * 3 + (c.pushup || 0) * 0.2 + (c.pullup || 0) * 0.5 + (c.squat || 0) * 0.15),
-    speed: Math.round(lv * 2.5 + (c.run || 0) * 1.5),
-    endur: Math.round(lv * 3 + (c.situp || 0) * 0.2 + (c.stretch || 0) * 0.3),
-    intl: Math.round(lv * 2 + (c.read || 0) * 0.4),
+    power: Math.round(lv * 3 + (c.pushup || 0) * 0.2 + (c.pullup || 0) * 0.4 + (c.squat || 0) * 0.1 + (sk.power || 0) * 5),
+    speed: Math.round(lv * 2.5 + (c.run || 0) * 1.2 + (sk.speed || 0) * 5),
+    endur: Math.round(lv * 3 + (c.situp || 0) * 0.2 + (c.plank || 0) * 0.05 + (sk.endur || 0) * 5),
+    intl: Math.round(lv * 2 + (c.read || 0) * 0.3 + (sk.intl || 0) * 5),
   };
+}
+function statFromExercise(exId) {
+  const ex = exerciseById(exId);
+  return ex ? ex.stat : "endur";
 }
 
 /* ---------- streak ---------- */
 function computeStreak() {
   const h = S.history || {};
   let d = new Date();
-  let todayActive = false;
   const tk = dayKey(d);
-  if ((h[tk] && (h[tk].quests > 0 || h[tk].perfect)) || questsDoneToday() > 0) todayActive = true;
+  const recToday = h[tk];
+  const todayActive = (recToday && (recToday.quests > 0 || recToday.perfect || recToday.sets)) || questsDoneTodayCount() > 0;
   if (!todayActive) d.setDate(d.getDate() - 1);
   let s = 0;
   for (let i = 0; i < 4000; i++) {
     const k = dayKey(d);
     const rec = h[k];
-    if (!rec || (!rec.quests && !rec.perfect)) break;
-    s++;
-    d.setDate(d.getDate() - 1);
+    if (!rec || (!rec.quests && !rec.perfect && !rec.sets)) break;
+    s++; d.setDate(d.getDate() - 1);
   }
   return s;
 }
 function syncStreak() {
   const cur = computeStreak();
   S.streaks = S.streaks || { current: 0, best: 0 };
-  if (cur > (S.streaks.best || 0)) {
-    S.streaks.best = cur;
-    if (cur > 1) toast(`${t("newBest")}: ${cur} 🔥`);
-  }
+  if (cur > (S.streaks.best || 0)) { S.streaks.best = cur; }
   S.streaks.current = cur;
   save();
 }
 
-/* ---------- xp flow ---------- */
+/* ---------- XP flow ---------- */
 function addXp(n) {
   if (!(n > 0)) return;
   const wasRank = rankIndexFromXp(S.xp);
@@ -82,94 +85,114 @@ function addXp(n) {
   if (S.xp > (S.totalXp || 0)) S.totalXp = S.xp;
   const nowLv = levelFromXp(S.xp);
   const nowRank = rankIndexFromXp(S.xp);
-  if (nowRank > wasRank) {
-    rankUp();
-  } else if (nowLv > wasLv) {
-    levelUp(nowLv);
-  } else {
-    AudioSys.complete();
+  const newSkillPts = nowLv - wasLv;
+  if (newSkillPts > 0) {
+    S.skillPoints = (S.skillPoints || 0) + newSkillPts;
+    toast("💡 +" + newSkillPts + " " + t("skillPts"));
   }
+  if (nowRank > wasRank) rankUp();
+  else if (nowLv > wasLv) levelUp(nowLv);
+  else AudioSys.complete();
   historyAddXp(n);
   save();
   render();
 }
 function historyAddXp(amount) {
   const k = todayStr();
-  if (!S.history[k]) S.history[k] = { xp: 0, quests: 0, perfect: false };
+  if (!S.history[k]) S.history[k] = { xp: 0, quests: 0, perfect: false, sets: 0 };
   S.history[k].xp += amount;
-  S.history[k].quests = questsDoneToday();
+}
+function markQuestDone() {
+  const k = todayStr();
+  if (!S.history[k]) S.history[k] = { xp: 0, quests: 0, perfect: false, sets: 0 };
+  S.history[k].quests = (S.history[k].quests || 0) + 1;
+}
+function questsDoneTodayCount() {
+  return (S.quests || []).filter(q => qCount(q.id) >= q.target).length;
 }
 
-/* ---------- quest actions ---------- */
-function doAdd(q, step) {
-  const cur = qCount(q.id);
-  const nv = Math.min(q.target, cur + (step || 1));
-  if (nv <= cur) return;
-  qSet(q.id, nv);
-  S.counters[q.id] = (S.counters[q.id] || 0) + (nv - cur);
-  if (nv >= q.target) finishQuest(q);
-  else { AudioSys.plus(); save(); render(); }
-}
-function doMinus(q) {
-  const cur = qCount(q.id);
-  if (cur <= 0) return;
-  qSet(q.id, cur - 1);
-  if (S.counters[q.id] > 0) S.counters[q.id] -= 1;
-  AudioSys.minus();
-  save(); render();
-}
-function doToggle(q) {
-  const cur = qCount(q.id);
-  if (cur > 0) { qSet(q.id, 0); AudioSys.minus(); save(); render(); }
-  else { qSet(q.id, 1); S.counters[q.id] = (S.counters[q.id] || 0) + 1; finishQuest(q); }
-}
+/* ---------- skills allocation ---------- */
+/* (allocateSkill defined below, near boot section) */
+
+/* ---------- daily quest complete ---------- */
 function finishQuest(q) {
   S.questsDone = (S.questsDone || 0) + 1;
-  addXp(q.xp);
+  markQuestDone();
+  addXp(q.xp, true);
+  addCoins(10);
   toast("✅ " + q.title + " — " + t("questDone") + " +" + q.xp + " XP");
   checkPerfectDay();
   checkAchievements();
   syncStreak();
+  tryHiddenSpawn();
 }
 function checkPerfectDay() {
   const all = S.quests.length > 0 && S.quests.every(q => qCount(q.id) >= q.target);
-  const hist = S.history[todayStr()] || (S.history[todayStr()] = { xp: 0, quests: 0, perfect: false });
+  const hist = S.history[todayStr()] || (S.history[todayStr()] = { xp: 0, quests: 0, perfect: false, sets: 0 });
   if (all && !hist.perfect) {
     hist.perfect = true;
     S.perfectDays = (S.perfectDays || 0) + 1;
-    addXp(200);
+    addXp(200, true);
+    addCoins(50);
     AudioSys.perfect();
     toast("🌟 " + t("perfectDay") + " " + t("perfectBonus") + "!");
     confettiBurst();
   }
+  historyAddXp(0); // refresh quest count
 }
 
-/* ---------- overlays ---------- */
+/* ---------- hidden quests ---------- */
+function tryHiddenSpawn() {
+  const k = todayStr();
+  if (S.hidden) return;
+  if (S.hiddenToday && S.hiddenToday[k] >= 1) return;
+  if (Math.random() < 0.25) {
+    const tpl = HIDDEN_POOL[Math.floor(Math.random() * HIDDEN_POOL.length)];
+    S.hidden = { ...tpl, progress: 0, spawned: Date.now() };
+    S.hiddenToday = S.hiddenToday || {};
+    S.hiddenToday[k] = (S.hiddenToday[k] || 0) + 1;
+    AudioSys.rankup();
+    toast("🌀 " + t("hiddenQuest") + ": " + tpl.title);
+    save();
+    renderQuests();
+  }
+}
+function addHiddenProgress(n) {
+  if (!S.hidden) return;
+  S.hidden.progress += n;
+  if (S.hidden.progress >= S.hidden.amount) {
+    S.hiddenDone = (S.hiddenDone || 0) + 1;
+    addXp(S.hidden.xp, true);
+    addCoins(25);
+    AudioSys.perfect();
+    toast("🌀 " + t("hiddenDone") + " +" + S.hidden.xp + " XP");
+    S.hidden = null;
+    checkAchievements();
+    confettiBurst();
+  }
+  save();
+  renderQuests();
+}
+function dismissHidden() { S.hidden = null; save(); renderQuests(); }
+
+/* ---------- overlay ---------- */
 function showOverlay(mode, meta) {
-  const ov = $("#overlay");
   $("#lvTitle").textContent = mode === "rank" ? RANKS[meta.idx].id : "LV " + meta.lv;
   $("#lvKicker").textContent = mode === "rank" ? t("rankUpTitle") : t("lvUpTitle");
-  $("#lvSub").textContent = mode === "rank"
-    ? t("rankUpText") + " — " + RANKS[meta.idx].name
-    : t("levelNew") + ": " + meta.lv;
+  $("#lvSub").textContent = mode === "rank" ? t("rankUpText") + " — " + RANKS[meta.idx].name : t("levelNew") + ": " + meta.lv;
   $("#lvStars").innerHTML = "✦".repeat(mode === "rank" ? 5 : 3);
-  ov.hidden = false;
-  if (mode === "rank") {
-    AudioSys.rankup();
-    confettiBurst();
-    if (S.vibr && navigator.vibrate) navigator.vibrate([90, 50, 90]);
-  } else {
-    AudioSys.levelup();
-  }
+  $("#overlay").hidden = false;
+  if (mode === "rank") { AudioSys.rankup(); confettiBurst(); if (S.vibr && navigator.vibrate) navigator.vibrate([90, 50, 90]); }
+  else AudioSys.levelup();
 }
 function levelUp(lv) { showOverlay("lv", { lv }); }
 function rankUp() { showOverlay("rank", { idx: rankIdx() }); }
-function closeOverlay() { $("#overlay").hidden = true; }
 
 /* ---------- achievements ---------- */
 function checkAchievements() {
   const lv = lvl();
   const c = S.counters || {};
+  const spentSkills = (S.skills && Object.values(S.skills).reduce((a, b) => a + b, 0)) || 0;
   const tests = {
     first_quest: (S.questsDone || 0) >= 1,
     perfect_day: (S.perfectDays || 0) >= 1,
@@ -182,34 +205,37 @@ function checkAchievements() {
     push1000: (c.pushup || 0) >= 1000,
     push5000: (c.pushup || 0) >= 5000,
     read100: (c.read || 0) >= 100,
+    sets30: (S.setsLogged || 0) >= 30,
+    focus5: (S.focusSessions || 0) >= 5,
+    hidden3: (S.hiddenDone || 0) >= 3,
+    coins500: (S.coins || 0) >= 500,
+    invent5: (S.itemsBought || 0) >= 5,
+    pr10: (S.prCount || 0) >= 10,
+    skills10: spentSkills >= 10,
+    speedA: (c.run || 0) >= 10,
   };
   let fresh = 0;
   ACHIEVEMENTS.forEach(a => {
     if (tests[a.id] && !S.ach[a.id]) {
       S.ach[a.id] = true;
       toast("🏅 " + a.name);
+      AudioSys.complete();
       fresh++;
     }
   });
-  if (fresh) {
-    AudioSys.rankup();
-    if (S.vibr && navigator.vibrate) navigator.vibrate([60, 40, 60]);
-    save();
-  }
+  if (fresh) { if (S.vibr && navigator.vibrate) navigator.vibrate([60, 40, 60]); save(); renderAchievements(); }
 }
 function doneAchCount() { return ACHIEVEMENTS.filter(a => S.ach[a.id]).length; }
 
 /* ---------- toast ---------- */
 function toast(msg) {
   const box = $("#toasts");
+  if (!box) return;
   const el = document.createElement("div");
   el.className = "toast";
   el.innerHTML = `<span class="t-dot">SYSTEM</span><span>${msg}</span>`;
   box.appendChild(el);
-  setTimeout(() => {
-    el.style.opacity = "0"; el.style.transition = "opacity .35s";
-    setTimeout(() => el.remove(), 380);
-  }, 3000);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .35s"; setTimeout(() => el.remove(), 380); }, 3000);
 }
 
 /* ---------- confetti ---------- */
@@ -224,7 +250,7 @@ function confettiBurst() {
     x: innerWidth / 2 + (Math.random() - 0.5) * 80,
     y: innerHeight * 0.35,
     vx: (Math.random() - 0.5) * 13,
-    vy: -Math.random() * 13 - 4,
+    vy: -Math.random() * 12 - 5,
     s: Math.random() * 6 + 3,
     c: colors[Math.floor(Math.random() * 5)],
     rot: Math.random() * Math.PI,
@@ -243,7 +269,6 @@ function confettiBurst() {
       ctx.restore();
     });
     if (alive && t++ < 140) confRaf = requestAnimationFrame(frame);
-    else setTimeout(() => ctx.clearRect(0, 0, cv.width, cv.height), 400);
   })();
 }
 
@@ -255,7 +280,12 @@ function render() {
   renderRank();
   renderAchievements();
   renderChart();
+  renderCalendar();
+  renderTrain();
+  renderFocus();
+  renderShop();
 }
+
 function renderHeader() {
   const lv = lvl();
   $("#lvlNum").textContent = lv;
@@ -264,23 +294,56 @@ function renderHeader() {
   $("#xpText").textContent = Math.round(S.xp - cur) + " / " + need;
   $("#xpFill").style.width = Math.min(100, ((S.xp - cur) / need) * 100) + "%";
   $("#streakChip").textContent = "🔥 " + (S.streaks.current || 0);
+  $("#coinBadge").textContent = "🪙 " + (S.coins || 0);
   $("#hunterName").textContent = S.name || "Хантер";
+  applyTitle();
   setRankColors();
 }
 function setRankColors() {
   const r = rank();
-  const c = r.color;
-  document.documentElement.style.setProperty("--rc", c);
   const badge = $("#rankBadge");
   badge.textContent = r.id;
-  badge.style.setProperty("--rc", c);
+  badge.style.setProperty("--rc", r.color);
+  document.documentElement.style.setProperty("--rc", r.color);
+  const title = $("#hudTitle");
+  if (title) title.textContent = r.id + "-Rank";
 }
+
 function renderQuests() {
   const list = $("#questsList");
   const qs = S.quests || [];
   $("#qsTitle").textContent = `${t("today")} ${locDate()}`;
   list.innerHTML = "";
-  if (!qs.length) list.innerHTML = `<div class="empty">${t("noQuests")}</div>`;
+
+  // hidden quest banner
+  const hq = $("#hiddenQuest");
+  if (S.hidden) {
+    const h = S.hidden;
+    hq.hidden = false;
+    const pct = Math.min(100, (h.progress / h.amount) * 100);
+    hq.innerHTML = `
+      <div class="hq-banner">
+        <div class="hq-head"><span class="hq-icon">${h.icon}</span>
+          <div class="hq-body">
+            <div class="hq-kicker">🌀 ${t("hiddenQuestLabel")}</div>
+            <div class="hq-title">${h.title}</div>
+            <div class="hq-bar"><i style="width:${pct}%"></i></div>
+            <div class="hq-prog">${Math.min(h.progress, h.amount)} / ${h.amount} ${h.unit} · +${h.xp} XP</div>
+          </div>
+        </div>
+        <div class="hq-acts">
+          <button class="q-btn" data-hact="add1">+1</button>
+          <button class="q-btn" data-hact="add5">+5</button>
+          <button class="q-btn" data-hact="add25">+25</button>
+          <button class="q-btn minus" data-hact="dismiss" title="Отклонить">✕</button>
+        </div>
+      </div>`;
+  } else {
+    hq.hidden = true;
+    hq.innerHTML = "";
+  }
+
+  if (!qs.length) { list.innerHTML = `<div class="empty">${t("noQuests")}</div>`; }
   let done = 0;
   qs.forEach(q => {
     const cur = qCount(q.id);
@@ -292,7 +355,7 @@ function renderQuests() {
         <div class="quest-head">
           <div class="quest-icon">${q.icon}</div>
           <div class="quest-name">${escapeHtml(q.title)}<div class="quest-desc">${q.target} ${q.unit}</div></div>
-          <div class="quest-xp">+${q.xp} ${t("questXp")}</div>
+          <div class="quest-xp">+${q.xp} XP</div>
           <div class="quest-done-badge">✓</div>
         </div>
         <div class="quest-bar"><i class="${isDone ? "" : "low"}" style="width:${pct}%"></i></div>
@@ -303,9 +366,9 @@ function renderQuests() {
         </div>
         <div class="q-add">
           ${q.type === "toggle"
-            ? `<button class="q-btn" data-id="${q.id}" data-act="toggle">${isDone ? "✓ " + t("finish") : t("finish")}</button>`
+            ? `<button class="q-btn" data-id="${q.id}" data-act="toggle">${isDone ? "✓" : t("finish")}</button>`
             : (isDone
-                ? `<button class="q-btn done-st" data-id="${q.id}" data-act="x">—</button>`
+                ? ""
                 : quickSteps(q).map(s => `<button class="q-btn" data-id="${q.id}" data-act="step" data-step="${s}">+${s}</button>`).join(""))}
         </div>
       </div>`);
@@ -316,60 +379,78 @@ function renderQuests() {
   ring.style.setProperty("--p", pctAll);
   ring.style.setProperty("--pc", pctAll === 100 ? "var(--green)" : "var(--purple)");
   $("#qsPct").textContent = pctAll + "%";
-  $("#qsPct").style.color = pctAll === 100 ? "var(--green)" : "";
 }
 function fmtQ(v, q) {
   v = Math.round(v * 10) / 10;
-  if (q.unit === "км") return (Math.round(v * 10) / 10) % 1 === 0 ? Math.round(v) : v.toFixed(1);
+  if (q.unit === "км") return v % 1 === 0 ? Math.round(v) : v.toFixed(1);
   return Math.round(v);
 }
 function quickSteps(q) {
   if (q.unit === "км") return [0.5, 1, 2];
-  if (q.unit === "мин") return [5, 10, 15];
+  if (q.unit === "мин") return [1, 5, 10];
+  if (q.unit === "сек") return [10, 30, 60];
   if (q.type === "toggle") return [];
   if (q.target > 500) return [10, 25, 50];
   return [10, 25, 50].filter(s => s <= q.target);
 }
+
 function renderRank() {
   const idx = rankIdx();
   const r = RANKS[idx];
   const next = RANKS[idx + 1];
-  $("#rankBadge").textContent = r.id;
   $("#rankBig").textContent = r.id;
   $("#rankName").textContent = r.name;
-  setRankColors();
+  $("#rankName").style.color = r.color;
+  $("#rankBig").style.background = "var(" + (['--rE', '--rD', '--rC', '--rB', '--rA', '--rS', '--rSS'][idx]) + ")";
+  const big = $("#rankBig");
+  big.textContent = r.id;
+  big.style.setProperty("--rc", r.color);
   if (next) {
-    const need = next.xp - r.xp;
-    const have = S.xp - r.xp;
-    $("#rankDesc").textContent = `${Math.max(0, need - have)} XP ${t("toNext")} ${next.id}`;
+    const need = next.xp - r.xp, have = S.xp - r.xp;
+    $("#rankDesc").textContent = `${need - have} XP ${t("toNext")} ${next.id}`;
     $("#rankXpFill").style.width = Math.min(100, (have / need) * 100) + "%";
     $("#rankProgress").textContent = `${Math.round(have)} / ${need} XP`;
   } else {
-    $("#rankDesc").textContent = r.name + " ● " + "MAX";
+    $("#rankDesc").textContent = r.name + " — " + (S.lang === "en" ? "MAX" : "МАКС");
     $("#rankXpFill").style.width = "100%";
-    $("#rankProgress").textContent = "🜲 MAX";
+    $("#rankProgress").textContent = "MAX";
   }
   $("#rankPath").innerHTML = RANKS.map((rr, i) => `
     <div class="rp-item ${i === idx ? "current" : ""}">
       <div class="rp-letter ${i < idx ? "done" : ""} ${i === idx ? "active" : ""}">${rr.id}</div>
-      <span class="rp-name">${rr.name}</span>
+      <span class="rp-name">${rr.id}-Rank</span>
     </div>`).join("");
   const st = hunterStats();
   $("#stStrength").textContent = st.power;
   $("#stSpeed").textContent = st.speed;
   $("#stEndurance").textContent = st.endur;
   $("#stWisdom").textContent = st.intl;
+  $("#skillPoints").textContent = "💡 " + (S.skillPoints || 0);
   $("#sTotalXp").textContent = Math.round(S.xp);
   $("#sQuestsDone").textContent = S.questsDone || 0;
-  $("#sWorkouts").textContent = Object.values(S.history || {}).reduce((a, h) => a + (h.quests || 0), 0);
+  $("#sWorkouts").textContent = Object.values(S.history || {}).reduce((a, h) => a + (h.quests || 0) + (h.sets || 0), 0);
   $("#sPages").textContent = S.counters?.read || 0;
   $("#sStreak").textContent = S.streaks.current || 0;
   $("#sBestStreak").textContent = S.streaks.best || 0;
   $("#sPerfect").textContent = S.perfectDays || 0;
+  $("#sHidden").textContent = S.hiddenDone || 0;
+
+  // skill rows
+  const rows = $("#skillRows");
+  if (rows) {
+    rows.innerHTML = Object.entries(STATS).map(([id, st]) => `
+      <div class="srow">
+        <span>${st.icon} ${st.name[S.lang] || st.name.ru} <em class="sk-fine">+${S.skills[id] || 0}</em></span>
+        <button class="btn-sm" data-alloc-target="${id}" ${S.skillPoints > 0 ? "" : "disabled style='opacity:.4'"}>+1 💡</button>
+      </div>`).join("");
+  }
 }
+
 function renderStats() { renderAchievements(); }
+
 function renderAchievements() {
   const grid = $("#achGrid");
+  if (!grid) return;
   grid.innerHTML = ACHIEVEMENTS.map(a => {
     const done = !!S.ach[a.id];
     return `<div class="ach ${done ? "" : "locked"}">
@@ -379,6 +460,30 @@ function renderAchievements() {
   }).join("");
   $("#achCounter").textContent = doneAchCount() + "/" + ACHIEVEMENTS.length;
 }
+
+function renderCalendar() {
+  const box = $("#calendar");
+  if (!box) return;
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const first = new Date(y, m, 1);
+  const offset = (first.getDay() + 6) % 7; // Monday first
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  let html = `<div class="cal-mon">${now.toLocaleDateString(S.lang === "en" ? "en-US" : "ru-RU", { month: "long", year: "numeric" })}</div><div class="cal-dow">${["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map(d => `<span>${d}</span>`).join("")}</div><div class="cal-grid">`;
+  for (let i = 0; i < offset; i++) html += `<span class="cal-cell dim"></span>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const k = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const rec = S.history[k];
+    let cls = "cal-cell";
+    if (rec && rec.perfect) cls += " perfect";
+    else if (rec && (rec.quests > 0 || rec.sets > 0)) cls += " done";
+    if (k === todayStr()) cls += " today";
+    html += `<span class="${cls}" title="${k}">${d}</span>`;
+  }
+  html += `</div>`;
+  box.innerHTML = html;
+}
+
 function renderChart() {
   const cv = $("#chart");
   if (!cv) return;
@@ -392,65 +497,49 @@ function renderChart() {
     const d = new Date(); d.setDate(d.getDate() - i);
     days.push({ k: dayKey(d), label: d.getDate() });
   }
-  const maxXp = Math.max(100, ...days.map(d => (S.history[d.k] && S.history[d.k].xp) || 0));
-  const pad = 4, gw = w / days.length;
+  const maxXp = Math.max(100, ...days.map(d => (S.history[d.k]?.xp || 0)));
+  const gw = w / days.length;
   days.forEach((d, i) => {
-    const v = (S.history[d.k] && S.history[d.k].xp) || 0;
+    const v = S.history[d.k]?.xp || 0;
     const h = Math.max(2, (v / maxXp) * (H - 58));
     const x = i * gw + gw * 0.15, y = H - 40 - h;
     ctx.fillStyle = (S.history[d.k] && S.history[d.k].perfect) ? "rgba(75,211,123,.85)" : "rgba(124,77,255,.55)";
     if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, gw * 0.7, h, 4); ctx.fill(); }
-    else { ctx.fillRect(x, y, gw * 0.7, h); }
+    else ctx.fillRect(x, y, gw * 0.7, h);
     if (v > 0) { ctx.fillStyle = "#9aa4cf"; ctx.font = "10px 'Share Tech Mono'"; ctx.fillText(v > 999 ? "1k+" : Math.round(v), x - 1, y - 5); }
     ctx.fillStyle = "#6d77a3"; ctx.font = "9px 'Share Tech Mono'";
     ctx.fillText(d.label, x, H - 22);
   });
 }
 
-/* ---------- i18n apply ---------- */
+/* ---------- i18n ---------- */
 function applyI18n() {
   document.documentElement.lang = S.lang;
   $$(".tab span").forEach((el, i) => {
-    const keys = ["tabQuests", "tabRank", "tabAch", "tabSet"];
-    el.textContent = t(keys[i]);
+    el.textContent = [t("tabQuests"), t("tabTrain"), t("tabRank"), t("tabShop"), t("tabSet")][i] || el.textContent;
   });
+  $$(".tab .ticon").forEach(() => {});
   const qs = $("#qsLabel");
   if (qs) qs.textContent = t("qsLabel");
   $("#hudDate").textContent = locDate();
 }
-function applyLang() {
-  applyI18n();
-  render();
-}
 
 /* ---------- quest modal ---------- */
 function showQuestModal() {
-  const title = prompt(t("addQuest") + " — название:");
+  const title = prompt(t("newQuest") + " — " + "название:");
   if (!title) return;
   const target = parseFloat(prompt("Цель (число):", "100"));
   if (!(target > 0)) return;
   const unit = prompt("Единица (раз, км, мин, стр):", "раз") || "раз";
   const xp = parseInt(prompt("XP за выполнение:", "20"), 10) || 20;
-  S.quests.push({
-    id: "custom_" + Date.now(),
-    icon: "⚔️",
-    title: title.trim(),
-    desc: target + " " + unit,
-    unit, target, xp,
-    type: "counter",
-  });
+  S.quests.push({ id: "custom_" + Date.now(), icon: "⚔️", title: title.trim(),
+    desc: target + " " + unit, unit, target, xp, type: "counter" });
   save(); render();
 }
 
-/* ---------- export/import/reset ---------- */
+/* ---------- export / import / reset ---------- */
 function exportData() {
-  const blob = new Blob(
-    [JSON.stringify({
-      app: "slsw", version: 1, saved: new Date().toISOString(),
-      note: "Solo Leveling System Workout backup", data: S
-    }, null, 2)],
-    { type: "application/json" }
-  );
+  const blob = new Blob([JSON.stringify({ app: "slsw", version: 2, saved: new Date().toISOString(), data: S }, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "slsw-save-" + todayStr() + ".json";
@@ -465,12 +554,12 @@ function importData(e) {
     try {
       const o = JSON.parse(String(r.result));
       const d = o.data || o;
-      if (!d || typeof d !== "object" || !d.quests || !Array.isArray(d.quests)) throw new Error("bad");
-      S = Object.assign({}, JSON.parse(JSON.stringify(S_STORE)), d);
-      S = Object.assign(S, { lang: S.lang || "ru" });
+      if (!d || typeof d !== "object" || !Array.isArray(d.quests)) throw new Error("bad");
+      const base = JSON.parse(JSON.stringify(S_STORE));
+      S = Object.assign(base, d);
       save();
       render();
-      applyLang();
+      applyI18n();
       toast("✔ " + t("importOk"));
     } catch (err) { toast("✖ " + t("importFail")); }
   };
@@ -480,23 +569,18 @@ function importData(e) {
 function resetAll() {
   if (!confirm(t("confirmReset"))) return;
   localStorage.removeItem(STORE_KEY);
-  load();
-  S.name = ""; S.awakenedAt = null;
-  save();
+  S = JSON.parse(JSON.stringify(S_STORE));
   $("#wake").hidden = false;
   $("#app").hidden = true;
   $("#hunterNameInput").value = "";
-  $("#btnContinue").hidden = true;
 }
 
 /* ---------- wake ---------- */
 function awaken() {
-  const inp = $("#hunterNameInput");
-  const name = (inp.value || "").trim();
+  const name = ($("#hunterNameInput").value || "").trim();
   if (!name) return;
   S.name = name;
   S.awakenedAt = Date.now();
-  if (!(S.quests && S.quests.length)) S.quests = defaultQuests();
   save();
   AudioSys.init();
   enterApp();
@@ -504,62 +588,55 @@ function awaken() {
   toast("⚡ " + t("awakTitle"));
 }
 function enterApp() {
+  const body = document.body;
   $("#hunterNameInput").value = S.name || "";
   $("#wake").hidden = true;
   $("#app").hidden = false;
-  $("#setName").value = S.name || "";
-  $("#setSound").checked = !!S.sound;
-  $("#setVibr").checked = !!S.vibr;
-  $("#setLang").value = S.lang || "ru";
-  S.lastVisit = todayStr();
   syncStreak();
+  applySkin();
   save();
   applyI18n();
   switchTab("quests");
   render();
-  AudioSys.setMuted(!S.sound);
+  applySkin();
   if (S.sound) AudioSys.init();
   checkAchievements();
+  tryHiddenSpawn();
 }
 
 /* ---------- boot ---------- */
 function init() {
   const saved = loadStore();
-  if (saved && saved.awakenedAt && saved.name) {
-    S = saved;
-    enterApp();
-  } else {
+  if (saved && saved.awakenedAt && saved.name) { S = saved; enterApp(); }
+  else {
     S = JSON.parse(JSON.stringify(S_STORE));
-    if (saved && saved.name) {
-      $("#btnContinue").hidden = false;
-      $("#btnContinue b").textContent = saved.name;
-      S.name = saved.name;
-      S.quests = saved.quests && saved.quests.length ? saved.quests : defaultQuests();
-    }
+    if (saved && saved.name) { S.name = saved.name; S.quests = saved.quests || defaultQuests(); }
     $("#wake").hidden = false;
     $("#app").hidden = true;
   }
 
   $("#btnAwaken").addEventListener("click", awaken);
-  $("#btnContinue").addEventListener("click", () => {
-    const saved = loadStore();
-    if (saved && saved.name) { S = saved; enterApp(); }
-  });
-  $("#hunterNameInput").addEventListener("input", () => {
-    $("#btnAwaken").disabled = !$("#hunterNameInput").value.trim();
-  });
+  $("#hunterNameInput").addEventListener("input", () => $("#btnAwaken").disabled = !$("#hunterNameInput").value.trim());
   $("#hunterNameInput").addEventListener("keydown", e => { if (e.key === "Enter") awaken(); });
   $("#btnAddQuest").addEventListener("click", showQuestModal);
   $("#questsList").addEventListener("click", e => {
     const btn = e.target.closest("[data-act]");
-    if (!btn) return;
-    const q = (S.quests || []).find(x => x.id === btn.dataset.id);
-    if (!q) return;
-    const act = btn.dataset.act;
-    if (act === "+") doAdd(q, 1);
-    else if (act === "-") doMinus(q);
-    else if (act === "toggle") doToggle(q);
-    else if (act === "step") doAdd(q, parseFloat(btn.dataset.step));
+    if (btn) {
+      const q = (S.quests || []).find(x => x.id === btn.dataset.id);
+      if (!q) return;
+      const act = btn.dataset.act;
+      if (act === "+") doAdd(q, 1);
+      else if (act === "-") doMinus(q);
+      else if (act === "toggle") doToggle(q);
+      else if (act === "step") doAdd(q, parseFloat(btn.dataset.step));
+      return;
+    }
+    const hbtn = e.target.closest("[data-hact]");
+    if (hbtn) {
+      const v = parseInt(hbtn.dataset.hact.replace("add", ""), 10) || 0;
+      if (v > 0) addHiddenProgress(v);
+      else dismissHidden();
+    }
   });
   $$(".tab").forEach(tab => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
   $("#btnExport").addEventListener("click", exportData);
@@ -567,34 +644,65 @@ function init() {
   $("#importFile").addEventListener("change", importData);
   $("#btnReset").addEventListener("click", resetAll);
   $("#setName").addEventListener("change", e => { S.name = e.target.value.trim() || S.name; save(); renderHeader(); });
-  $("#setSound").addEventListener("change", e => {
-    S.sound = e.target.checked;
-    if (S.sound) AudioSys.init(); else AudioSys.setMuted(true);
-    save();
-  });
+  $("#setSound").addEventListener("change", e => { S.sound = e.target.checked; AudioSys.setMuted(!S.sound); save(); });
   $("#setVibr").addEventListener("change", e => { S.vibr = e.target.checked; save(); });
-  $("#setLang").addEventListener("change", e => { S.lang = e.target.value; save(); applyLang(); });
-  $("#btnOverlayClose").addEventListener("click", closeOverlay);
+  $("#setLang").addEventListener("change", e => { S.lang = e.target.value; save(); applyI18n(); render(); });
+  $("#btnOverlayClose").addEventListener("click", () => $("#overlay").hidden = true);
+  document.addEventListener("click", e => {
+    const sk = e.target.closest("[data-alloc-target]");
+    if (sk) { allocateSkill(sk.dataset.allocTarget); return; }
+    const focusBtn = e.target.closest("[data-mins]");
+    if (focusBtn) focusStart(parseInt(focusBtn.dataset.mins, 10));
+  });
   setInterval(() => {
     const k = todayStr();
     if (S.lastVisit !== k) {
-      S.lastVisit = k;
-      save();
+      S.lastVisit = k; save();
+      S.doneToday = S.doneToday || {}; // fresh day
+      syncStreak();
       render();
     }
   }, 60000);
+}
+function allocateSkill(stat) {
+  if (!(S.skillPoints > 0)) { toast("😕 " + "Не хватает очков"); return; }
+  S.skills[stat] = (S.skills[stat] || 0) + 1;
+  S.skillPoints--;
+  AudioSys.plus();
+  save();
+  checkAchievements();
+  renderRank();
 }
 function switchTab(name) {
   $$(".view").forEach(v => v.style.display = "none");
   const el = $("#view-" + name);
   if (el) el.style.display = "";
   $$(".tab").forEach(tb => tb.classList.toggle("active", tb.dataset.tab === name));
-  if (name === "rank") setTimeout(renderChart, 30);
+  render();
 }
 function escapeHtml(str) {
-  return String(str || "").replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  }[c]));
+  return String(str || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* quest actions (counter) */
+function doAdd(q, step) {
+  const cur = qCount(q.id);
+  const nv = Math.min(q.target, cur + (step || 1));
+  if (nv <= cur) return;
+  qSet(q.id, nv);
+  if (nv >= q.target) finishQuest(q);
+  else { AudioSys.plus(); save(); render(); }
+}
+function doMinus(q) {
+  const cur = qCount(q.id);
+  if (cur <= 0) return;
+  qSet(q.id, cur - 1);
+  AudioSys.minus(); save(); render();
+}
+function doToggle(q) {
+  const cur = qCount(q.id);
+  if (cur > 0) { qSet(q.id, 0); AudioSys.minus(); save(); render(); }
+  else { qSet(q.id, 1); finishQuest(q); }
 }
 
 document.addEventListener("DOMContentLoaded", init);
