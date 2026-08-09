@@ -422,6 +422,56 @@ input,select{font-family:inherit;color:inherit}
 .hq-prog{font-family:"Share Tech Mono";font-size:11px;color:var(--txt-dim);margin-top:6px}
 .hq-acts{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
 
+/* ---------- daily tip (study mode) ---------- */
+.tip-card{
+  margin:12px 0;padding:12px 14px;border-radius:14px;display:flex;gap:12px;align-items:flex-start;
+  background:rgba(79,195,247,.08);border:1px dashed rgba(79,195,247,.35);
+}
+.tip-ic{
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:17px;flex:none;
+  background:rgba(79,195,247,.18);
+}
+.tip-title{font-size:10px;letter-spacing:2px;color:var(--purple);font-weight:700;margin-bottom:3px}
+.tip-text{font-size:13.5px;color:var(--txt);line-height:1.45;font-style:italic}
+
+/* ---------- daily system quest ---------- */
+.dq-card{
+  margin:12px 0;padding:14px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(255,213,79,.10),rgba(124,77,255,.12));
+  border:1px solid rgba(255,213,79,.35);
+  box-shadow:0 0 24px rgba(255,213,79,.08);
+  animation:fadeIn .35s ease;
+}
+.dq-card.done{opacity:.75;border-color:rgba(75,211,123,.45)}
+.dq-card .hq-icon{background:rgba(255,213,79,.2);border-color:rgba(255,213,79,.5)}
+.dq-card .hq-kicker{color:#ffd54f}
+.dq-card .hq-bar i{background:linear-gradient(90deg,#ffd54f,#7c4dff)}
+.dq-reward{font-family:"Share Tech Mono";font-size:11px;color:#ffd54f;margin-top:-4px}
+.dq-done{
+  width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:rgba(75,211,123,.2);border:1px solid rgba(75,211,123,.55);color:var(--green);font-weight:900;font-size:17px;
+}
+.dq-ok-line{font-family:"Share Tech Mono";color:var(--green);font-size:12px;margin-top:10px;letter-spacing:1px}
+.dq-acts{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.dq-finish{flex:1;min-width:140px}
+
+/* ---------- streak rewards ---------- */
+.sr-row{
+  display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid rgba(255,255,255,.05);
+  font-size:13px;
+}
+.sr-row.got{opacity:.55}
+.sr-day{flex:1;color:var(--txt)}
+.sr-coin{font-family:"Share Tech Mono";color:#ffd54f}
+.sr-ok{margin-left:auto;color:var(--green);font-weight:900}
+.sr-next{
+  margin-top:14px;padding:12px;border-radius:13px;background:rgba(255,213,79,.08);
+  border:1px solid rgba(255,213,79,.3);font-size:12.5px;color:var(--txt);
+}
+.sr-next .hq-bar{margin-top:9px}
+.sr-next b{color:#ffd54f}
+.sr-next.done-all{text-align:center;color:var(--green);font-weight:700;letter-spacing:1px}
+
 /* ---------- focus timer ---------- */
 .focus-card{padding:22px 18px}
 .focus-idle{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}

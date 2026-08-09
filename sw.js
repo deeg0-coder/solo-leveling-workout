@@ -1,7 +1,7 @@
 /* ============================================================
    sw.js — offline cache for SLS Workout
 ============================================================ */
-const CACHE = "slsw-v2-1";
+const CACHE = "slsw-v2-2";
 const ASSETS = [
   "./",
   "./index.html",

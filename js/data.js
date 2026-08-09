@@ -60,6 +60,9 @@ const S_STORE = {
   hidden: null,        // active hidden quest
   hiddenToday: {},     // date -> count spawned
   focus: null,         // { endsAt, mins, startedAt }
+  daily: null,         // daily system quest { id, date, progress, done }
+  dailyDone: 0,        // lifetime daily quests completed
+  study: true,         // show daily system tip
   lastVisit: "",
 };
 
@@ -166,6 +169,67 @@ const HIDDEN_POOL = [
   { title: { ru: "Быстрая медитация", en: "Quick meditation" }, unit: "мин", amount: 5, xp: 45, icon: "💆" },
 ];
 
+/* ---------- daily system quest ---------- */
+const DAILY_POOL = [
+  { id: "d_plank", icon: "⏱️", title: { ru: "Планка 3 минуты", en: "3-minute plank" }, unit: "сек", amount: 180, xp: 60 },
+  { id: "d_water", icon: "💧", title: { ru: "Выпить 2 литра воды", en: "Drink 2L of water" }, unit: "раз", amount: 8, xp: 40 },
+  { id: "d_walk", icon: "🚶", title: { ru: "Прогулка 8000 шагов", en: "Walk 8000 steps" }, unit: "шагов", amount: 8000, xp: 60 },
+  { id: "d_pull", icon: "🧗", title: { ru: "20 подтягиваний", en: "20 pull-ups" }, unit: "раз", amount: 20, xp: 50 },
+  { id: "d_screen", icon: "📵", title: { ru: "Час без телефона", en: "Phone-free hour" }, unit: "мин", amount: 60, xp: 55 },
+  { id: "d_stretch", icon: "🤸", title: { ru: "Растяжка 15 минут", en: "15-min stretch" }, unit: "мин", amount: 15, xp: 45 },
+  { id: "d_read", icon: "📖", title: { ru: "Прочитать 30 страниц", en: "Read 30 pages" }, unit: "стр", amount: 30, xp: 45 },
+  { id: "d_sleep", icon: "😴", title: { ru: "Спать 8 часов", en: "Sleep 8 hours" }, unit: "раз", amount: 1, xp: 70, toggle: true },
+  { id: "d_squats", icon: "🦵", title: { ru: "100 приседаний", en: "100 squats" }, unit: "раз", amount: 100, xp: 55 },
+  { id: "d_greens", icon: "🥗", title: { ru: "Порция овощей", en: "A serving of greens" }, unit: "раз", amount: 1, xp: 30, toggle: true },
+];
+function dailyQuestDef(id) { return DAILY_POOL.find(x => x.id === id); }
+/* deterministic pseudo-random pick per date key (FNV-1a) */
+function hashDate(str) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h;
+}
+function dailyQuestForDate(k) { return DAILY_POOL[hashDate(k) % DAILY_POOL.length]; }
+function dqSteps(dq) {
+  if (dq.unit === "сек") return [30, 60];
+  if (dq.unit === "мин") return [5, 10];
+  if (dq.unit === "стр") return [10, 20];
+  if (dq.unit === "шагов") return [1000, 2000];
+  return [1, 5, 10];
+}
+
+/* ---------- streak rewards ---------- */
+const STREAK_REWARDS = [
+  { days: 7, coins: 25 },
+  { days: 14, coins: 50 },
+  { days: 21, coins: 75 },
+  { days: 28, coins: 100 },
+  { days: 35, coins: 150 },
+  { days: 45, coins: 200 },
+  { days: 60, coins: 300 },
+  { days: 90, coins: 500 },
+];
+function streakCoinsFor(streak) {
+  let coins = 25;
+  STREAK_REWARDS.forEach(x => { if (streak >= x.days) coins = x.coins; });
+  return coins;
+}
+
+/* ---------- daily tips (study mode) ---------- */
+const TIPS = [
+  { ru: "Один подход — уже победа над вчерашним собой.", en: "One set is already a victory over yesterday's you." },
+  { ru: "Система не награждает тех, кто ждёт. Действуй первым.", en: "The System doesn't reward those who wait. Move first." },
+  { ru: "Серость — это состояние. Тёмная аура — выбор.", en: "Grey is a state. A shadow aura is a choice." },
+  { ru: "Маленькие шаги каждый день превращаются в ранг.", en: "Small steps every day turn into a rank." },
+  { ru: "Тело слушается того, кто не отступает в воскресенье.", en: "The body obeys the one who doesn't quit on Sundays." },
+  { ru: "Уровень — это не цифра, это твоя цена.", en: "A level isn't a number — it's your price." },
+  { ru: "Пей воду, спи, поднимайся раньше. Система смотрит.", en: "Drink water, sleep, wake early. The System watches." },
+  { ru: "Отличный день начинается с первого подхода.", en: "A great day starts with the first set." },
+  { ru: "Ошибки — это XP. Не выключайся.", en: "Mistakes are XP. Don't shut down." },
+  { ru: "Строгость к себе сегодня — мощный ты завтра.", en: "Discipline today is a stronger you tomorrow." },
+];
+function tipForDate(k) { return TIPS[hashDate("tip:" + k) % TIPS.length]; }
+
 /* ---------- achievements ---------- */
 const ACHIEVEMENTS = [
   { id: "first_quest", icon: "🌀", name: { ru: "Пробуждение", en: "Awakening" }, desc: { ru: "Выполните первое задание", en: "Complete your first quest" } },
@@ -192,4 +256,5 @@ const ACHIEVEMENTS = [
   { id: "pr10", icon: "📈", name: { ru: "Рекордсмен", en: "Record Breaker" }, desc: { ru: "10 личных рекордов", en: "10 personal records" } },
   { id: "skills10", icon: "🎓", name: { ru: "Стратег", en: "Strategist" }, desc: { ru: "Потрачено 10 очков навыков", en: "Spend 10 skill points" } },
   { id: "speedA", icon: "🌪️", name: { ru: "Ветер", en: "Wind" }, desc: { ru: "10 км бега суммарно", en: "10 km of running total" } },
+  { id: "daily7", icon: "⚙️", name: { ru: "Слуга Системы", en: "System's Servant" }, desc: { ru: "Выполнено 7 заданий дня", en: "Complete 7 daily quests" } },
 ];

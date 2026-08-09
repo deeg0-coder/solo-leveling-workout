@@ -78,6 +78,9 @@
         </div>
       </div>
 
+      <div id="tipBox" hidden></div>
+      <div id="dailyQuest"></div>
+
       <div id="hiddenQuest" hidden></div>
 
       <div class="card quests-wrap" id="questsList"></div>
@@ -159,6 +162,11 @@
       </div>
 
       <div class="card">
+        <div class="card-title" id="streakRewTitleEl">НАГРАДЫ ЗА СЕРИЮ</div>
+        <div id="streakRewards"></div>
+      </div>
+
+      <div class="card">
         <div class="card-title" id="calTitleEl">КАЛЕНДАРЬ</div>
         <div id="calendar"></div>
       </div>
@@ -194,6 +202,9 @@
         </div>
         <div class="set-row"><span>Вибрация</span>
           <label class="switch"><input type="checkbox" id="setVibr" checked><i></i></label>
+        </div>
+        <div class="set-row"><span id="studyLbl">Урок дня</span>
+          <label class="switch"><input type="checkbox" id="setStudy" checked><i></i></label>
         </div>
         <div class="set-row"><span>Язык</span>
           <select class="set-input" id="setLang"><option value="ru">Русский</option><option value="en">English</option></select>

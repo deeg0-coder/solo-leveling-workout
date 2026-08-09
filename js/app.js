@@ -82,9 +82,10 @@ function syncStreak() {
   if (cur > (S.streaks.best || 0)) S.streaks.best = cur;
   S.streaks.current = cur;
   if (cur > prev && cur > 0 && cur % 7 === 0) {
-    addCoins(25);
+    const coins = streakCoinsFor(cur);
+    addCoins(coins);
     AudioSys.perfect();
-    toast("🏆 " + t("streakRewarded") + " " + cur + " " + t("daysOn"));
+    toast("🏆 " + t("streakRewarded") + " " + cur + " " + t("daysOn") + " — 🪙 +" + coins);
     confettiBurst();
   }
   save();
@@ -242,6 +243,7 @@ function checkAchievements() {
     pr10: (S.prCount || 0) >= 10,
     skills10: spentSkills >= 10,
     speedA: (c.run || 0) >= 10,
+    daily7: (S.dailyDone || 0) >= 7,
   };
   let fresh = 0;
   ACHIEVEMENTS.forEach(a => {
@@ -306,6 +308,9 @@ function render() {
   if (!$("#app") || $("#app").hidden) return;
   renderHeader();
   renderQuests();
+  renderTip();
+  renderDaily();
+  renderStreakRewards();
   renderRank();
   renderAchievements();
   renderChart();
@@ -426,6 +431,116 @@ function quickSteps(q) {
   if (q.type === "toggle") return [];
   if (q.target > 500) return [10, 25, 50];
   return [10, 25, 50].filter(s => s <= q.target);
+}
+
+/* ---------- daily system quest ---------- */
+function todayDaily() {
+  const k = todayStr();
+  if (!S.daily || S.daily.date !== k) {
+    const tpl = dailyQuestForDate(k);
+    S.daily = { id: tpl.id, date: k, progress: 0, done: false };
+    save();
+  }
+  return S.daily;
+}
+function renderDaily() {
+  const box = $("#dailyQuest");
+  if (!box) return;
+  const dq = dailyQuestDef(todayDaily().id);
+  if (!dq) return;
+  const d = todayDaily();
+  const pct = Math.min(100, (d.progress / dq.amount) * 100);
+  const steps = dq.toggle ? [] : dqSteps(dq);
+  box.innerHTML = `
+    <div class="dq-card ${d.done ? "done" : ""}">
+      <div class="hq-head">
+        <span class="hq-icon ring">${dq.icon}</span>
+        <div class="hq-body">
+          <div class="hq-kicker">⚙️ ${t("dailyKicker")}</div>
+          <div class="hq-title">${dq.title[S.lang] || dq.title.ru}</div>
+          <div class="dq-reward">🎁 +${dq.xp} XP · 🪙 +15</div>
+        </div>
+        ${d.done ? `<div class="dq-done">✓</div>` : ""}
+      </div>
+      ${d.done
+        ? `<div class="dq-ok-line">${t("dqDone")}</div>`
+        : `
+      <div class="hq-bar"><i style="width:${pct}%"></i></div>
+      <div class="hq-prog">${fmtQ(d.progress, dq)} / ${fmtQ(dq.amount, dq)} ${dq.unit}</div>
+      <div class="dq-acts">
+        ${dq.toggle
+          ? `<button class="q-btn plus dq-finish" data-dqact="finish">⚔️ ${t("finish")}</button>`
+          : steps.map(s => `<button class="q-btn" data-dqact="step" data-dqv="${s}">+${fmtQ(s, dq)}</button>`).join("")}
+      </div>`}
+    </div>`;
+}
+function dqAdd(v) {
+  const dq = dailyQuestDef(todayDaily().id);
+  if (!dq || todayDaily().done) return;
+  S.daily.progress += v;
+  if (S.daily.progress >= dq.amount) completeDaily();
+  else { AudioSys.tick?.(); save(); render(); }
+}
+function completeDaily() {
+  const d = todayDaily();
+  const dq = dailyQuestDef(d.id);
+  d.progress = Math.min(d.progress, dq.amount);
+  d.done = true;
+  S.dailyDone = (S.dailyDone || 0) + 1;
+  addXp(dq.xp);
+  addCoins(15);
+  markQuestDone();
+  toast("⚙️ " + t("dqDone") + " +" + dq.xp + " XP 🪙+15");
+  AudioSys.perfect();
+  confettiBurst();
+  checkPerfectDay();
+  checkAchievements();
+  syncStreak();
+  save();
+  render();
+}
+
+/* ---------- study mode: daily tip ---------- */
+function renderTip() {
+  const box = $("#tipBox");
+  if (!box) return;
+  if (S.study === false) { box.hidden = true; box.innerHTML = ""; return; }
+  const tip = tipForDate(todayStr());
+  box.hidden = false;
+  box.innerHTML = `
+    <div class="tip-card">
+      <span class="tip-ic">💡</span>
+      <div>
+        <div class="tip-title">${t("tipTitle")}</div>
+        <div class="tip-text">${tip[S.lang] || tip.ru}</div>
+      </div>
+    </div>`;
+}
+
+/* ---------- streak rewards panel ---------- */
+function renderStreakRewards() {
+  const box = $("#streakRewards");
+  if (!box) return;
+  const cur = S.streaks.current || 0;
+  const next = STREAK_REWARDS.find(x => x.days > cur);
+  let html = STREAK_REWARDS.map(m => {
+    const got = cur >= m.days;
+    return `<div class="sr-row ${got ? "got" : ""}">
+      <span class="sr-day">${m.days} ${t("srDays")}</span>
+      <span class="sr-coin">🪙 ${m.coins}</span>
+      ${got ? `<i class="sr-ok">✓</i>` : ""}
+    </div>`;
+  }).join("");
+  if (next) {
+    const pct = Math.min(100, (cur / next.days) * 100);
+    html += `<div class="sr-next">
+      <div>${t("srNext")}: <b>${next.days} ${t("srDays")}</b> — 🪙 ${next.coins}</div>
+      <div class="hq-bar"><i style="width:${pct}%"></i></div>
+    </div>`;
+  } else {
+    html += `<div class="sr-next done-all">🏆 ${t("srAll")}</div>`;
+  }
+  box.innerHTML = html;
 }
 
 function renderRank() {
@@ -562,6 +677,10 @@ function applyI18n() {
   for (const id in ids) { const el = $("#" + id); if (el) el.textContent = ids[id]; }
   const pct = $("#qsPctLabel");
   if (pct) pct.textContent = t("donePct");
+  const srt = $("#streakRewTitleEl");
+  if (srt) srt.textContent = t("streakRewTitle");
+  const sl = $("#studyLbl");
+  if (sl) sl.textContent = t("studyMode");
   $$("#view-rank .stat-rows .srow span").forEach((el, i) => {
     const labels = [t("totalXp"), t("questsDone"), t("workoutsDone"), t("pagesRead"), t("streakDays"), t("bestStreak"), t("perfectDays"), t("hiddenQuestsDone")];
     if (labels[i]) el.textContent = labels[i];
@@ -696,6 +815,12 @@ function init() {
     if (v > 0) addHiddenProgress(v);
     else dismissHidden();
   });
+  $("#dailyQuest").addEventListener("click", e => {
+    const b = e.target.closest("[data-dqact]");
+    if (!b) return;
+    if (b.dataset.dqact === "finish") dqAdd(Math.max(1, dailyQuestDef(todayDaily().id).amount));
+    else dqAdd(parseFloat(b.dataset.dqv) || 0);
+  });
   $$(".tab").forEach(tab => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
   $("#btnExport").addEventListener("click", exportData);
   $("#btnImport").addEventListener("click", () => $("#importFile").click());
@@ -704,6 +829,7 @@ function init() {
   $("#setName").addEventListener("change", e => { S.name = e.target.value.trim() || S.name; save(); renderHeader(); });
   $("#setSound").addEventListener("change", e => { S.sound = e.target.checked; AudioSys.setMuted(!S.sound); save(); });
   $("#setVibr").addEventListener("change", e => { S.vibr = e.target.checked; save(); });
+  $("#setStudy").addEventListener("change", e => { S.study = e.target.checked; save(); renderTip(); });
   $("#setLang").addEventListener("change", e => { S.lang = e.target.value; save(); applyI18n(); render(); });
   $("#btnOverlayClose").addEventListener("click", () => $("#overlay").hidden = true);
   let deferredPrompt = null;
