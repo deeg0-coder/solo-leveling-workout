@@ -3,6 +3,8 @@
 ============================================================ */
 const $ = (sel, el) => (el || document).querySelector(sel);
 const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
+/* safe bind: missing element must never kill the whole init */
+function on(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
 
 let S = null;
 
@@ -784,11 +786,11 @@ function init() {
     $("#app").hidden = true;
   }
 
-  $("#btnAwaken").addEventListener("click", awaken);
-  $("#hunterNameInput").addEventListener("input", () => $("#btnAwaken").disabled = !$("#hunterNameInput").value.trim());
-  $("#hunterNameInput").addEventListener("keydown", e => { if (e.key === "Enter") awaken(); });
-  $("#btnAddQuest").addEventListener("click", showQuestModal);
-  $("#questsList").addEventListener("click", e => {
+  on($("#btnAwaken"), "click", awaken);
+  on($("#hunterNameInput"), "input", () => $("#btnAwaken").disabled = !$("#hunterNameInput").value.trim());
+  on($("#hunterNameInput"), "keydown", e => { if (e.key === "Enter") awaken(); });
+  on($("#btnAddQuest"), "click", showQuestModal);
+  on($("#questsList"), "click", e => {
     const btn = e.target.closest("[data-act]");
     if (btn) {
       const q = (S.quests || []).find(x => x.id === btn.dataset.id);
@@ -808,30 +810,30 @@ function init() {
       else dismissHidden();
     }
   });
-  $("#hiddenQuest").addEventListener("click", e => {
+  on($("#hiddenQuest"), "click", e => {
     const hbtn = e.target.closest("[data-hact]");
     if (!hbtn) return;
     const v = parseInt(hbtn.dataset.hact.replace("add", ""), 10) || 0;
     if (v > 0) addHiddenProgress(v);
     else dismissHidden();
   });
-  $("#dailyQuest").addEventListener("click", e => {
+  on($("#dailyQuest"), "click", e => {
     const b = e.target.closest("[data-dqact]");
     if (!b) return;
     if (b.dataset.dqact === "finish") dqAdd(Math.max(1, dailyQuestDef(todayDaily().id).amount));
     else dqAdd(parseFloat(b.dataset.dqv) || 0);
   });
-  $$(".tab").forEach(tab => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
-  $("#btnExport").addEventListener("click", exportData);
-  $("#btnImport").addEventListener("click", () => $("#importFile").click());
-  $("#importFile").addEventListener("change", importData);
-  $("#btnReset").addEventListener("click", resetAll);
-  $("#setName").addEventListener("change", e => { S.name = e.target.value.trim() || S.name; save(); renderHeader(); });
-  $("#setSound").addEventListener("change", e => { S.sound = e.target.checked; AudioSys.setMuted(!S.sound); save(); });
-  $("#setVibr").addEventListener("change", e => { S.vibr = e.target.checked; save(); });
-  $("#setStudy").addEventListener("change", e => { S.study = e.target.checked; save(); renderTip(); });
-  $("#setLang").addEventListener("change", e => { S.lang = e.target.value; save(); applyI18n(); render(); });
-  $("#btnOverlayClose").addEventListener("click", () => $("#overlay").hidden = true);
+  $$(".tab").forEach(tab => on(tab, "click", () => switchTab(tab.dataset.tab)));
+  on($("#btnExport"), "click", exportData);
+  on($("#btnImport"), "click", () => $("#importFile").click());
+  on($("#importFile"), "change", importData);
+  on($("#btnReset"), "click", resetAll);
+  on($("#setName"), "change", e => { S.name = e.target.value.trim() || S.name; save(); renderHeader(); });
+  on($("#setSound"), "change", e => { S.sound = e.target.checked; AudioSys.setMuted(!S.sound); save(); });
+  on($("#setVibr"), "change", e => { S.vibr = e.target.checked; save(); });
+  on($("#setStudy"), "change", e => { S.study = e.target.checked; save(); renderTip(); });
+  on($("#setLang"), "change", e => { S.lang = e.target.value; save(); applyI18n(); render(); });
+  on($("#btnOverlayClose"), "click", () => $("#overlay").hidden = true);
   let deferredPrompt = null;
   window.addEventListener("beforeinstallprompt", e => {
     e.preventDefault();
@@ -839,7 +841,7 @@ function init() {
     const row = $("#installRow");
     if (row) row.hidden = false;
   });
-  $("#btnInstall").addEventListener("click", async () => {
+  on($("#btnInstall"), "click", async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     await deferredPrompt.userChoice;

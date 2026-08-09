@@ -1,7 +1,7 @@
 /* ============================================================
    sw.js — offline cache for SLS Workout
 ============================================================ */
-const CACHE = "slsw-v2-2";
+const CACHE = "slsw-v2-3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -33,6 +33,20 @@ self.addEventListener("activate", e => {
 
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
+  const isNav = e.request.mode === "navigate";
+  if (isNav) {
+    // index.html should never be stale — fetch first, fall back to cache offline
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res && res.ok && new URL(e.request.url).origin === location.origin) {
+          const cp = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, cp));
+        }
+        return res;
+      }).catch(() => caches.match(e.request).then(hit => hit || caches.match("./")))
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(hit => {
       const fetched = fetch(e.request).then(res => {
