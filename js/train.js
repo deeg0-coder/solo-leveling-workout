@@ -32,15 +32,7 @@ function logSet(exId, reps) {
     if (nv > cur) {
       qSet(qid, nv);
       if (nv >= q.target) {
-        S.questsDone = (S.questsDone || 0) + 1;
-        markQuestDone();
-        addXp(q.xp);
-        addCoins(10);
-        toast("✅ " + q.title + " — " + t("questDone") + " +" + q.xp + " XP");
-        checkPerfectDay();
-        checkAchievements();
-        syncStreak();
-        tryHiddenSpawn();
+        tryFinishQuest(q);
       }
     }
   }
@@ -101,19 +93,19 @@ function renderTrain() {
     </div>
     <div class="train-stats">
       <div class="t-stat"><em>${t("todayLabel")}</em><b>${total} ${ex.unit}</b></div>
-      <div class="t-stat"><em>Подходы</em><b>${sets.length}</b></div>
-      <div class="t-stat"><em class="pr">PR сет</em><b>${pr.set || "—"}</b></div>
-      <div class="t-stat"><em class="pr">PR день</em><b>${pr.total || "—"}</b></div>
+      <div class="t-stat"><em>${t("focusSets")}</em><b>${sets.length}</b></div>
+      <div class="t-stat"><em class="pr">${t("prSet")}</em><b>${pr.set || "—"}</b></div>
+      <div class="t-stat"><em class="pr">${t("prDay")}</em><b>${pr.total || "—"}</b></div>
     </div>
     <div class="t-input">
       <input type="number" id="repInput" min="1" step="1" value="${quickRep(ex)}" class="rep-input">
-      <button class="btn-primary t-add" id="btnLogReps">+ Записать</button>
+      <button class="btn-primary t-add" id="btnLogReps">${t("btnLog")}</button>
       <button class="q-btn undo" id="btnUndo" title="Отменить">↩</button>
     </div>
-    ${quest ? `<div class="train-hint">Синхронизировано с квестом: ${quest.icon} ${quest.title} — ${qCount(quest.id)}/${quest.target}</div>` : ""}
+    ${quest ? `<div class="train-hint">${t("syncedQuest")}: ${quest.icon} ${quest.title} — ${qCount(quest.id)}/${quest.target}</div>` : ""}
     <div class="train-sets">${sets.length
       ? sets.map((s, i) => `<div class="set-chip">#${i + 1} · <b>${s.reps}</b> ${ex.unit}</div>`).join("")
-      : `<div class="empty">Пока нет подходов. Запишите первый!</div>`}
+      : `<div class="empty">${t("noSets")}</div>`}
     </div>
   `;
   $("#exSel").onchange = () => { S.trainSel = $("#exSel").value; save(); renderTrain(); };
@@ -175,8 +167,8 @@ function renderFocus() {
         <div class="focus-time" id="focusTime">${fmtTime(left)}</div>
         <div class="focus-track"><i id="focusBar" style="width:${pct}%"></i></div>
         <div class="focus-acts">
-          <button class="btn-sm" onclick="${S.focus.running ? 'focusPause()' : 'focusResume()'}">${S.focus.running ? "⏸ Пауза" : "▶ Продолжить"}</button>
-          <button class="btn-sm danger" onclick="focusCancel()">✖ Отменить</button>
+          <button class="btn-sm" onclick="${S.focus.running ? 'focusPause()' : 'focusResume()'}">${S.focus.running ? t("pause") : t("resume")}</button>
+          <button class="btn-sm danger" onclick="focusCancel()">${t("cancelFocus")}</button>
         </div>
       </div>`;
     if (S.focus.running) tickFocus();
@@ -185,11 +177,11 @@ function renderFocus() {
       <div class="focus-idle">
         <i class="focus-orb">⏳</i>
         <div class="focus-presets">
-          <button class="btn-sm" data-mins="15">15 мин</button>
-          <button class="btn-sm" data-mins="25">25 мин</button>
-          <button class="btn-sm" data-mins="45">45 мин</button>
+          <button class="btn-sm" data-mins="15">${t("min15")}</button>
+          <button class="btn-sm" data-mins="25">${t("min25")}</button>
+          <button class="btn-sm" data-mins="45">${t("min45")}</button>
         </div>
-        <div class="train-hint">Полная концентрация = +40 XP</div>
+        <div class="train-hint">${t("focusHint")}</div>
       </div>`;
   }
 }

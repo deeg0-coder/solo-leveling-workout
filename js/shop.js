@@ -13,16 +13,18 @@ function hasItem(id) { return (S.shop.inventory || []).includes(id); }
 function activeSkin() { return S.shop.activeSkin || "s1"; }
 function activeTitle() { return S.shop.activeTitle || "t1"; }
 
+function itemName(item) { return item.name[S.lang] || item.name.ru; }
+function itemDesc(item) { return item.desc[S.lang] || item.desc.ru; }
 function applySkin() {
   const s = skinById(activeSkin()) || SHOP_SKINS[0];
   if (!s) return;
   document.documentElement.style.setProperty("--skin1", s.c1);
   document.documentElement.style.setProperty("--skin2", s.c2);
 }
-function applyTitle(title) {
+function applyTitle() {
   const t = SHOP_TITLES.find(x => x.id === activeTitle()) || SHOP_TITLES[0];
   const el = $("#hunterTitle");
-  if (el) el.textContent = t ? t.icon + " " + t.name : "";
+  if (el) el.textContent = t ? t.icon + " " + itemName(t) : "";
 }
 
 function buyShopItem(kind, id) {
@@ -31,7 +33,7 @@ function buyShopItem(kind, id) {
   if (!item) return;
   if (hasItem(id)) return;
   if (S.coins < item.price) {
-    toast("🪙 Не хватает монет");
+    toast("🪙 " + t("notEnough"));
     AudioSys.minus();
     return;
   }
@@ -39,7 +41,7 @@ function buyShopItem(kind, id) {
   S.itemsBought = (S.itemsBought || 0) + 1;
   S.shop.inventory.push(id);
   AudioSys.complete();
-  toast("🛒 Куплено: " + item.name + (item.icon ? " " + item.icon : ""));
+  toast("🛒 " + t("bought") + ": " + itemName(item) + (item.icon ? " " + item.icon : ""));
   save();
   renderShop();
   checkAchievements();
@@ -74,12 +76,12 @@ function renderShop() {
     return `<div class="shop-item ${owned ? "owned" : ""} ${active ? "active" : ""}">
       <div class="shop-ic">${t.icon}</div>
       <div class="shop-info">
-        <div class="shop-name">${t.name}</div>
-        <div class="shop-desc">${t.desc}</div>
+        <div class="shop-name">${itemName(t)}</div>
+        <div class="shop-desc">${itemDesc(t)}</div>
       </div>
       <div class="shop-ctrl">
-        ${active ? `<span class="shop-eq">Титул надет</span>`
-          : owned ? `<button class="btn-sm" onclick="equipItem('t','${t.id}')">Надеть</button>`
+        ${active ? `<span class="shop-eq">${t("titleEquipped")}</span>`
+          : owned ? `<button class="btn-sm" onclick="equipItem('t','${t.id}')">${t("equip")}</button>`
           : `<button class="btn-sm buy" onclick="buyShop('t','${t.id}')">🪙 ${t.price}</button>`}
       </div>
     </div>`;
@@ -90,19 +92,18 @@ function renderShop() {
     const active = activeSkin() === s.id;
     return `<div class="shop-item ${owned ? "owned" : ""} ${active ? "active" : ""}">
       <div class="shop-swatch" style="background:linear-gradient(135deg,${s.c1},${s.c2})"></div>
-      <div class="shop-info">
-        <div class="shop-name">Тема: ${s.name}</div>
-        <div class="shop-desc">Цвет портала</div>
+      <div class="shop-name">${t("shopSkins").includes("ТЕМЫ") ? "Тема: " : "Theme: "}${itemName(s)}</div>
+        <div class="shop-desc">${t("skinDesc")}</div>
       </div>
       <div class="shop-ctrl">
-        ${active ? `<span class="shop-eq">Активна</span>`
-          : owned ? `<button class="btn-sm" onclick="equipItem('s','${s.id}')">Применить</button>`
+        ${active ? `<span class="shop-eq">${t("skinActive")}</span>`
+          : owned ? `<button class="btn-sm" onclick="equipItem('s','${s.id}')">${t("apply")}</button>`
           : `<button class="btn-sm buy" onclick="buyShop('s','${s.id}')">🪙 ${s.price}</button>`}
       </div>
     </div>`;
   }).join("");
 
-  grid.innerHTML = `<div class="shop-sec">ТИТУЛЫ</div>${titleCards}<div class="shop-sec">ТЕМЫ ПОРТАЛА</div>${skinRow}`;
+  grid.innerHTML = `<div class="shop-sec">${t("shopTitles")}</div>${titleCards}<div class="shop-sec">${t("shopSkins")}</div>${skinRow}`;
 }
 
 function buyShop(kind, id) { buyShopItem(kind, id); }

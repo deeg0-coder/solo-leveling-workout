@@ -33,6 +33,14 @@ function dayDone() {
 function qCount(qid) { return dayDone()[qid] || 0; }
 function qSet(qid, v) { dayDone()[qid] = v; }
 function questById(qid) { return (S.quests || []).find(q => q.id === qid); }
+function questDoneToday(qid) { return !!(dayDone()[qid + "_d"]); }
+function markQuestDoneToday(qid) { dayDone()[qid + "_d"] = true; }
+/* award quest completion only once per day */
+function tryFinishQuest(q) {
+  if (questDoneToday(q.id)) return;
+  markQuestDoneToday(q.id);
+  finishQuest(q);
+}
 
 /* ---------- stats with skills ---------- */
 function hunterStats() {
@@ -69,10 +77,16 @@ function computeStreak() {
   return s;
 }
 function syncStreak() {
+  const prev = S.streaks.current || 0;
   const cur = computeStreak();
-  S.streaks = S.streaks || { current: 0, best: 0 };
-  if (cur > (S.streaks.best || 0)) { S.streaks.best = cur; }
+  if (cur > (S.streaks.best || 0)) S.streaks.best = cur;
   S.streaks.current = cur;
+  if (cur > prev && cur > 0 && cur % 7 === 0) {
+    addCoins(25);
+    AudioSys.perfect();
+    toast("🏆 " + t("streakRewarded") + " " + cur + " " + t("daysOn"));
+    confettiBurst();
+  }
   save();
 }
 
@@ -152,7 +166,7 @@ function tryHiddenSpawn() {
     S.hiddenToday = S.hiddenToday || {};
     S.hiddenToday[k] = (S.hiddenToday[k] || 0) + 1;
     AudioSys.rankup();
-    toast("🌀 " + t("hiddenQuest") + ": " + tpl.title);
+    toast("🌀 " + t("hiddenQuest") + ": " + (tpl.title[S.lang] || tpl.title.ru));
     save();
     renderQuests();
   }
@@ -174,12 +188,27 @@ function addHiddenProgress(n) {
   renderQuests();
 }
 function dismissHidden() { S.hidden = null; save(); renderQuests(); }
+function delQuest(q) {
+  if (!confirm(t("delQuest"))) return;
+  S.quests = (S.quests || []).filter(x => x.id !== q.id);
+  delete dayDone()[q.id];
+  delete dayDone()[q.id + "_d"];
+  AudioSys.minus();
+  save();
+  render();
+}
+function restoreQuests() {
+  S.quests = defaultQuests();
+  AudioSys.plus();
+  save();
+  render();
+}
 
 /* ---------- overlay ---------- */
 function showOverlay(mode, meta) {
   $("#lvTitle").textContent = mode === "rank" ? RANKS[meta.idx].id : "LV " + meta.lv;
   $("#lvKicker").textContent = mode === "rank" ? t("rankUpTitle") : t("lvUpTitle");
-  $("#lvSub").textContent = mode === "rank" ? t("rankUpText") + " — " + RANKS[meta.idx].name : t("levelNew") + ": " + meta.lv;
+  $("#lvSub").textContent = mode === "rank" ? t("rankUpText") + " — " + (RANKS[meta.idx].name[S.lang] || RANKS[meta.idx].name.ru) : t("levelNew") + ": " + meta.lv;
   $("#lvStars").innerHTML = "✦".repeat(mode === "rank" ? 5 : 3);
   $("#overlay").hidden = false;
   if (mode === "rank") { AudioSys.rankup(); confettiBurst(); if (S.vibr && navigator.vibrate) navigator.vibrate([90, 50, 90]); }
@@ -218,7 +247,7 @@ function checkAchievements() {
   ACHIEVEMENTS.forEach(a => {
     if (tests[a.id] && !S.ach[a.id]) {
       S.ach[a.id] = true;
-      toast("🏅 " + a.name);
+      toast("🏅 " + (a.name[S.lang] || a.name.ru));
       AudioSys.complete();
       fresh++;
     }
@@ -326,7 +355,7 @@ function renderQuests() {
         <div class="hq-head"><span class="hq-icon">${h.icon}</span>
           <div class="hq-body">
             <div class="hq-kicker">🌀 ${t("hiddenQuestLabel")}</div>
-            <div class="hq-title">${h.title}</div>
+            <div class="hq-title">${h.title[S.lang] || h.title.ru}</div>
             <div class="hq-bar"><i style="width:${pct}%"></i></div>
             <div class="hq-prog">${Math.min(h.progress, h.amount)} / ${h.amount} ${h.unit} · +${h.xp} XP</div>
           </div>
@@ -343,7 +372,11 @@ function renderQuests() {
     hq.innerHTML = "";
   }
 
-  if (!qs.length) { list.innerHTML = `<div class="empty">${t("noQuests")}</div>`; }
+  if (!qs.length) {
+    list.innerHTML = `<div class="empty">${t("noQuests")}</div><button class="btn-outline q-restore" id="btnRestoreQuests">🔄 ${t("resetQuest")}</button>`;
+    const rb = $("#btnRestoreQuests");
+    if (rb) rb.addEventListener("click", restoreQuests);
+  }
   let done = 0;
   qs.forEach(q => {
     const cur = qCount(q.id);
@@ -357,6 +390,7 @@ function renderQuests() {
           <div class="quest-name">${escapeHtml(q.title)}<div class="quest-desc">${q.target} ${q.unit}</div></div>
           <div class="quest-xp">+${q.xp} XP</div>
           <div class="quest-done-badge">✓</div>
+          <button class="q-del" data-id="${q.id}" data-act="del" title="✕">✕</button>
         </div>
         <div class="quest-bar"><i class="${isDone ? "" : "low"}" style="width:${pct}%"></i></div>
         <div class="quest-controls">
@@ -399,7 +433,7 @@ function renderRank() {
   const r = RANKS[idx];
   const next = RANKS[idx + 1];
   $("#rankBig").textContent = r.id;
-  $("#rankName").textContent = r.name;
+  $("#rankName").textContent = r.name[S.lang] || r.name.ru;
   $("#rankName").style.color = r.color;
   $("#rankBig").style.background = "var(" + (['--rE', '--rD', '--rC', '--rB', '--rA', '--rS', '--rSS'][idx]) + ")";
   const big = $("#rankBig");
@@ -411,7 +445,7 @@ function renderRank() {
     $("#rankXpFill").style.width = Math.min(100, (have / need) * 100) + "%";
     $("#rankProgress").textContent = `${Math.round(have)} / ${need} XP`;
   } else {
-    $("#rankDesc").textContent = r.name + " — " + (S.lang === "en" ? "MAX" : "МАКС");
+    $("#rankDesc").textContent = (r.name[S.lang] || r.name.ru) + " — " + (S.lang === "en" ? "MAX" : "МАКС");
     $("#rankXpFill").style.width = "100%";
     $("#rankProgress").textContent = "MAX";
   }
@@ -455,7 +489,7 @@ function renderAchievements() {
     const done = !!S.ach[a.id];
     return `<div class="ach ${done ? "" : "locked"}">
       <div class="ach-icon">${a.icon}</div>
-      <div class="ach-info"><div class="ach-name">${escapeHtml(a.name)}</div><div class="ach-desc">${escapeHtml(a.desc)}</div></div>
+      <div class="ach-info"><div class="ach-name">${escapeHtml(a.name[S.lang] || a.name.ru)}</div><div class="ach-desc">${escapeHtml(a.desc[S.lang] || a.desc.ru)}</div></div>
     </div>`;
   }).join("");
   $("#achCounter").textContent = doneAchCount() + "/" + ACHIEVEMENTS.length;
@@ -518,20 +552,36 @@ function applyI18n() {
   $$(".tab span").forEach((el, i) => {
     el.textContent = [t("tabQuests"), t("tabTrain"), t("tabRank"), t("tabShop"), t("tabSet")][i] || el.textContent;
   });
-  $$(".tab .ticon").forEach(() => {});
-  const qs = $("#qsLabel");
-  if (qs) qs.textContent = t("qsLabel");
+  const ids = {
+    qsLabel: t("qsLabel"), curRankEl: t("curRank"), pathTitleEl: t("pathTitle"),
+    statsTitleEl: t("statsTitle"), skillPtsTitleEl: t("skillPtsTitle"),
+    persStatsEl: t("persStats"), chartTitleEl: t("chartTitle"), calTitleEl: t("calTitle"),
+    achTitleEl: t("achievementsTitle"), walletTitleEl: t("walletTitle"),
+    profileTitleEl: t("profileTitle"), settingsTitleEl: t("settingsTitle"), dataTitleEl: t("dataTitle"),
+  };
+  for (const id in ids) { const el = $("#" + id); if (el) el.textContent = ids[id]; }
+  const pct = $("#qsPctLabel");
+  if (pct) pct.textContent = t("donePct");
+  $$("#view-rank .stat-rows .srow span").forEach((el, i) => {
+    const labels = [t("totalXp"), t("questsDone"), t("workoutsDone"), t("pagesRead"), t("streakDays"), t("bestStreak"), t("perfectDays"), t("hiddenQuestsDone")];
+    if (labels[i]) el.textContent = labels[i];
+  });
+  const foots = $$(".footnote");
+  [t("footTrain"), t("footShop"), t("footMain")].forEach((s, i) => { if (foots[i]) foots[i].textContent = s; });
+  const il = $("#installLbl"), idsc = $("#installDesc");
+  if (il) il.textContent = t("install");
+  if (idsc) idsc.textContent = t("installable");
   $("#hudDate").textContent = locDate();
 }
 
 /* ---------- quest modal ---------- */
 function showQuestModal() {
-  const title = prompt(t("newQuest") + " — " + "название:");
+  const title = prompt(t("newQuestName"));
   if (!title) return;
-  const target = parseFloat(prompt("Цель (число):", "100"));
+  const target = parseFloat(prompt(t("newQuestTarget"), "100"));
   if (!(target > 0)) return;
-  const unit = prompt("Единица (раз, км, мин, стр):", "раз") || "раз";
-  const xp = parseInt(prompt("XP за выполнение:", "20"), 10) || 20;
+  const unit = prompt(t("newQuestUnit"), "раз") || "раз";
+  const xp = parseInt(prompt(t("newQuestXp"), "20"), 10) || 20;
   S.quests.push({ id: "custom_" + Date.now(), icon: "⚔️", title: title.trim(),
     desc: target + " " + unit, unit, target, xp, type: "counter" });
   save(); render();
@@ -629,6 +679,7 @@ function init() {
       else if (act === "-") doMinus(q);
       else if (act === "toggle") doToggle(q);
       else if (act === "step") doAdd(q, parseFloat(btn.dataset.step));
+      else if (act === "del") delQuest(q);
       return;
     }
     const hbtn = e.target.closest("[data-hact]");
@@ -637,6 +688,13 @@ function init() {
       if (v > 0) addHiddenProgress(v);
       else dismissHidden();
     }
+  });
+  $("#hiddenQuest").addEventListener("click", e => {
+    const hbtn = e.target.closest("[data-hact]");
+    if (!hbtn) return;
+    const v = parseInt(hbtn.dataset.hact.replace("add", ""), 10) || 0;
+    if (v > 0) addHiddenProgress(v);
+    else dismissHidden();
   });
   $$(".tab").forEach(tab => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
   $("#btnExport").addEventListener("click", exportData);
@@ -648,6 +706,19 @@ function init() {
   $("#setVibr").addEventListener("change", e => { S.vibr = e.target.checked; save(); });
   $("#setLang").addEventListener("change", e => { S.lang = e.target.value; save(); applyI18n(); render(); });
   $("#btnOverlayClose").addEventListener("click", () => $("#overlay").hidden = true);
+  let deferredPrompt = null;
+  window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const row = $("#installRow");
+    if (row) row.hidden = false;
+  });
+  $("#btnInstall").addEventListener("click", async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+  });
   document.addEventListener("click", e => {
     const sk = e.target.closest("[data-alloc-target]");
     if (sk) { allocateSkill(sk.dataset.allocTarget); return; }
@@ -686,11 +757,12 @@ function escapeHtml(str) {
 
 /* quest actions (counter) */
 function doAdd(q, step) {
+  if (questDoneToday(q.id)) return;
   const cur = qCount(q.id);
   const nv = Math.min(q.target, cur + (step || 1));
   if (nv <= cur) return;
   qSet(q.id, nv);
-  if (nv >= q.target) finishQuest(q);
+  if (nv >= q.target) tryFinishQuest(q);
   else { AudioSys.plus(); save(); render(); }
 }
 function doMinus(q) {
@@ -702,7 +774,7 @@ function doMinus(q) {
 function doToggle(q) {
   const cur = qCount(q.id);
   if (cur > 0) { qSet(q.id, 0); AudioSys.minus(); save(); render(); }
-  else { qSet(q.id, 1); finishQuest(q); }
+  else { if (!questDoneToday(q.id)) { qSet(q.id, 1); tryFinishQuest(q); } }
 }
 
 document.addEventListener("DOMContentLoaded", init);

@@ -22,6 +22,9 @@
   --rA:#ffd54f;
   --rS:#ff5f57;
   --rSS:#ff8a65;
+  --skin1:#4fc3f7;
+  --skin2:#7c4dff;
+  --rc:#4fc3f7;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
@@ -38,10 +41,11 @@ input,select{font-family:inherit;color:inherit}
 .fx-aura{
   position:absolute;inset:-40%;opacity:.55;
   background:
-    radial-gradient(42% 42% at 18% 12%,rgba(79,195,247,.20),transparent 70%),
-    radial-gradient(48% 48% at 85% 20%,rgba(139,92,246,.22),transparent 70%),
-    radial-gradient(60% 55% at 50% 110%,rgba(79,195,247,.14),transparent 70%);
+    radial-gradient(42% 42% at 18% 12%,color-mix(in srgb,var(--skin1) 22%,transparent),transparent 70%),
+    radial-gradient(48% 48% at 85% 20%,color-mix(in srgb,var(--skin2) 25%,transparent),transparent 70%),
+    radial-gradient(60% 55% at 50% 110%,color-mix(in srgb,var(--skin1) 16%,transparent),transparent 70%);
   animation:aura 22s ease-in-out infinite alternate;
+  transition:background .8s ease;
 }
 @keyframes aura{
   from{transform:rotate(0deg) scale(1)}
@@ -221,6 +225,13 @@ input,select{font-family:inherit;color:inherit}
 .q-btn:active{background:rgba(124,77,255,.38);transform:scale(.94)}
 .q-btn.minus{border-color:rgba(255,95,87,.35);background:rgba(255,95,87,.1);color:#ffc2bc}
 .q-btn.minus:active{background:rgba(255,95,87,.32)}
+.q-del{
+  margin-left:auto;flex:none;width:26px;height:26px;border-radius:8px;
+  color:var(--txt-soft);font-size:12px;line-height:1;
+  border:1px solid transparent;opacity:.75;
+}
+.q-del:hover{color:#ffb3ae;border-color:rgba(255,95,87,.4);opacity:1}
+.q-restore{display:block;margin:12px auto 0}
 .q-value{
   flex:1;display:flex;flex-direction:column;align-items:center;line-height:1.1;
   font-family:"Share Tech Mono",monospace;font-size:20px;

@@ -26,13 +26,13 @@ function defaultQuests() {
 
 /* rank ladder: E -> D -> C -> B -> A -> S -> SS */
 const RANKS = [
-  { id: "E", xp: 0, name: "E-ранга", color: "var(--rE)" },
-  { id: "D", xp: 600, name: "D-ранга", color: "var(--rD)" },
-  { id: "C", xp: 1600, name: "C-ранга", color: "var(--rC)" },
-  { id: "B", xp: 3800, name: "B-ранга", color: "var(--rB)" },
-  { id: "A", xp: 8500, name: "A-ранга", color: "var(--rA)" },
-  { id: "S", xp: 18000, name: "S-ранга", color: "var(--rS)" },
-  { id: "SS", xp: 45000, name: "Monarch", color: "var(--rSS)" },
+  { id: "E", xp: 0, name: { ru: "E-ранга", en: "E-Rank" }, color: "var(--rE)" },
+  { id: "D", xp: 600, name: { ru: "D-ранга", en: "D-Rank" }, color: "var(--rD)" },
+  { id: "C", xp: 1600, name: { ru: "C-ранга", en: "C-Rank" }, color: "var(--rC)" },
+  { id: "B", xp: 3800, name: { ru: "B-ранга", en: "B-Rank" }, color: "var(--rB)" },
+  { id: "A", xp: 8500, name: { ru: "A-ранга", en: "A-Rank" }, color: "var(--rA)" },
+  { id: "S", xp: 18000, name: { ru: "S-ранга", en: "S-Rank" }, color: "var(--rS)" },
+  { id: "SS", xp: 45000, name: { ru: "Монарх", en: "Monarch" }, color: "var(--rSS)" },
 ];
 
 function xpForLevel(lv) { return Math.round(100 * Math.pow(lv, 1.72)); }
@@ -142,54 +142,54 @@ function questIdForExercise(exId) {
 
 /* ---------- shop ---------- */
 const SHOP_TITLES = [
-  { id: "t1", icon: "🎯", name: "Новичок", desc: "Базовый титул", price: 0 },
-  { id: "t2", icon: "⚔️", name: "Грайнд", desc: "Настойчивость", price: 150 },
-  { id: "t3", icon: "🌑", name: "Тень", desc: "Скрытность", price: 400 },
-  { id: "t4", icon: "👑", name: "Монарх", desc: "Верховный", price: 1000 },
+  { id: "t1", icon: "🎯", name: { ru: "Новичок", en: "Beginner" }, desc: { ru: "Базовый титул", en: "Basic title" }, price: 0 },
+  { id: "t2", icon: "⚔️", name: { ru: "Грайнд", en: "Grinder" }, desc: { ru: "Настойчивость", en: "Persistence" }, price: 150 },
+  { id: "t3", icon: "🌑", name: { ru: "Тень", en: "Shadow" }, desc: { ru: "Скрытность", en: "Stealth" }, price: 400 },
+  { id: "t4", icon: "👑", name: { ru: "Монарх", en: "Monarch" }, desc: { ru: "Верховный", en: "Supreme" }, price: 1000 },
 ];
 const SHOP_SKINS = [
-  { id: "s1", name: "Неон", c1: "#4fc3f7", c2: "#7c4dff", price: 0 },
-  { id: "s2", name: "Фиолет", c1: "#b388ff", c2: "#5e2d91", price: 300 },
-  { id: "s3", name: "Багровый", c1: "#ff5f57", c2: "#7d1d1d", price: 450 },
-  { id: "s4", name: "Изумруд", c1: "#4bd37b", c2: "#146b46", price: 350 },
-  { id: "s5", name: "Золотой", c1: "#ffd54f", c2: "#a9841f", price: 600 },
+  { id: "s1", name: { ru: "Неон", en: "Neon" }, c1: "#4fc3f7", c2: "#7c4dff", price: 0 },
+  { id: "s2", name: { ru: "Фиолет", en: "Violet" }, c1: "#b388ff", c2: "#5e2d91", price: 300 },
+  { id: "s3", name: { ru: "Багровый", en: "Crimson" }, c1: "#ff5f57", c2: "#7d1d1d", price: 450 },
+  { id: "s4", name: { ru: "Изумруд", en: "Emerald" }, c1: "#4bd37b", c2: "#146b46", price: 350 },
+  { id: "s5", name: { ru: "Золотой", en: "Golden" }, c1: "#ffd54f", c2: "#a9841f", price: 600 },
 ];
 function skinById(id) { return SHOP_SKINS.find(s => s.id === id); }
 
 /* ---------- hidden quests ---------- */
 const HIDDEN_POOL = [
-  { title: "Быстрая пробежка", unit: "раз", amount: 30, xp: 60, icon: "🏃" },
-  { title: "Сто отжиманий", unit: "раз", amount: 100, xp: 50, icon: "💪" },
-  { title: "Планка на сосредоточение", unit: "сек", amount: 90, xp: 40, icon: "⏱️" },
-  { title: "50 приседаний", unit: "раз", amount: 50, xp: 40, icon: "🦵" },
-  { title: "Тихий час без экрана", unit: "мин", amount: 30, xp: 50, icon: "🧘" },
-  { title: "Быстрая медитация", unit: "мин", amount: 5, xp: 45, icon: "💆" },
+  { title: { ru: "Быстрая пробежка", en: "Quick run" }, unit: "раз", amount: 30, xp: 60, icon: "🏃" },
+  { title: { ru: "Сто отжиманий", en: "One hundred push-ups" }, unit: "раз", amount: 100, xp: 50, icon: "💪" },
+  { title: { ru: "Планка на сосредоточение", en: "Focus plank" }, unit: "сек", amount: 90, xp: 40, icon: "⏱️" },
+  { title: { ru: "50 приседаний", en: "50 squats" }, unit: "раз", amount: 50, xp: 40, icon: "🦵" },
+  { title: { ru: "Тихий час без экрана", en: "Screen-free hour" }, unit: "мин", amount: 30, xp: 50, icon: "🧘" },
+  { title: { ru: "Быстрая медитация", en: "Quick meditation" }, unit: "мин", amount: 5, xp: 45, icon: "💆" },
 ];
 
 /* ---------- achievements ---------- */
 const ACHIEVEMENTS = [
-  { id: "first_quest", icon: "🌀", name: "Пробуждение", desc: "Выполните первое задание" },
-  { id: "perfect_day", icon: "🌟", name: "Идеальный день", desc: "Все задания за один день" },
-  { id: "lv5", icon: "🎚️", name: "Серебряный охотник", desc: "Достигните 5 уровня" },
-  { id: "lv10", icon: "🔥", name: "Золотой охотник", desc: "Достигните 10 уровня" },
-  { id: "lv20", icon: "⚡", name: "Легенда", desc: "Достигните 20 уровня" },
-  { id: "rank_d", icon: "🟢", name: "Ранг D", desc: "Получите ранг D" },
-  { id: "rank_c", icon: "🔵", name: "Ранг C", desc: "Получите ранг C" },
-  { id: "rank_b", icon: "🟣", name: "Ранг B", desc: "Получите ранг B" },
-  { id: "rank_a", icon: "🟠", name: "Ранг A", desc: "Получите ранг A" },
-  { id: "rank_s", icon: "🔴", name: "Ранг S", desc: "Получите ранг S" },
-  { id: "streak3", icon: "📅", name: "Стабильность", desc: "Серия 3 дня" },
-  { id: "streak7", icon: "🗓️", name: "Неделя", desc: "Серия 7 дней" },
-  { id: "streak30", icon: "🏔️", name: "Месяц", desc: "Серия 30 дней" },
-  { id: "push1000", icon: "💪", name: "Тысяча", desc: "1000 отжиманий суммарно" },
-  { id: "push5000", icon: "🧱", name: "Железный", desc: "5000 отжиманий суммарно" },
-  { id: "read100", icon: "📚", name: "Книжный червь", desc: "Прочитано 100 страниц" },
-  { id: "sets30", icon: "📝", name: "Тренировщик", desc: "Записано 30 подходов" },
-  { id: "focus5", icon: "🎯", name: "Фокус", desc: "5 сессий фокуса" },
-  { id: "hidden3", icon: "🌀", name: "Тень заданий", desc: "3 скрытых квеста" },
-  { id: "coins500", icon: "🪙", name: "Богач", desc: "Накопите 500 монет" },
-  { id: "invent5", icon: "🛒", name: "Коллекционер", desc: "5 предметов рынка" },
-  { id: "pr10", icon: "📈", name: "Рекордсмен", desc: "10 личных рекордов" },
-  { id: "skills10", icon: "🎓", name: "Стратег", desc: "Потрачено 10 очков навыков" },
-  { id: "speedA", icon: "🌪️", name: "Ветер", desc: "10 км бега суммарно" },
+  { id: "first_quest", icon: "🌀", name: { ru: "Пробуждение", en: "Awakening" }, desc: { ru: "Выполните первое задание", en: "Complete your first quest" } },
+  { id: "perfect_day", icon: "🌟", name: { ru: "Идеальный день", en: "Perfect day" }, desc: { ru: "Все задания за один день", en: "All quests in one day" } },
+  { id: "lv5", icon: "🎚️", name: { ru: "Серебряный охотник", en: "Silver Hunter" }, desc: { ru: "Достигните 5 уровня", en: "Reach level 5" } },
+  { id: "lv10", icon: "🔥", name: { ru: "Золотой охотник", en: "Golden Hunter" }, desc: { ru: "Достигните 10 уровня", en: "Reach level 10" } },
+  { id: "lv20", icon: "⚡", name: { ru: "Легенда", en: "Legend" }, desc: { ru: "Достигните 20 уровня", en: "Reach level 20" } },
+  { id: "rank_d", icon: "🟢", name: { ru: "Ранг D", en: "D Rank" }, desc: { ru: "Получите ранг D", en: "Reach D rank" } },
+  { id: "rank_c", icon: "🔵", name: { ru: "Ранг C", en: "C Rank" }, desc: { ru: "Получите ранг C", en: "Reach C rank" } },
+  { id: "rank_b", icon: "🟣", name: { ru: "Ранг B", en: "B Rank" }, desc: { ru: "Получите ранг B", en: "Reach B rank" } },
+  { id: "rank_a", icon: "🟠", name: { ru: "Ранг A", en: "A Rank" }, desc: { ru: "Получите ранг A", en: "Reach A rank" } },
+  { id: "rank_s", icon: "🔴", name: { ru: "Ранг S", en: "S Rank" }, desc: { ru: "Получите ранг S", en: "Reach S rank" } },
+  { id: "streak3", icon: "📅", name: { ru: "Стабильность", en: "Steady" }, desc: { ru: "Серия 3 дня", en: "3-day streak" } },
+  { id: "streak7", icon: "🗓️", name: { ru: "Неделя", en: "A Week" }, desc: { ru: "Серия 7 дней", en: "7-day streak" } },
+  { id: "streak30", icon: "🏔️", name: { ru: "Месяц", en: "A Month" }, desc: { ru: "Серия 30 дней", en: "30-day streak" } },
+  { id: "push1000", icon: "💪", name: { ru: "Тысяча", en: "A Thousand" }, desc: { ru: "1000 отжиманий суммарно", en: "1000 push-ups total" } },
+  { id: "push5000", icon: "🧱", name: { ru: "Железный", en: "Iron" }, desc: { ru: "5000 отжиманий суммарно", en: "5000 push-ups total" } },
+  { id: "read100", icon: "📚", name: { ru: "Книжный червь", en: "Bookworm" }, desc: { ru: "Прочитано 100 страниц", en: "100 pages read" } },
+  { id: "sets30", icon: "📝", name: { ru: "Тренировщик", en: "Trainer" }, desc: { ru: "Записано 30 подходов", en: "30 sets logged" } },
+  { id: "focus5", icon: "🎯", name: { ru: "Фокус", en: "Deep Focus" }, desc: { ru: "5 сессий фокуса", en: "5 focus sessions" } },
+  { id: "hidden3", icon: "🌀", name: { ru: "Тень заданий", en: "Quest Shadow" }, desc: { ru: "3 скрытых квеста", en: "3 hidden quests" } },
+  { id: "coins500", icon: "🪙", name: { ru: "Богач", en: "Rich" }, desc: { ru: "Накопите 500 монет", en: "Save 500 coins" } },
+  { id: "invent5", icon: "🛒", name: { ru: "Коллекционер", en: "Collector" }, desc: { ru: "5 предметов рынка", en: "5 shop items" } },
+  { id: "pr10", icon: "📈", name: { ru: "Рекордсмен", en: "Record Breaker" }, desc: { ru: "10 личных рекордов", en: "10 personal records" } },
+  { id: "skills10", icon: "🎓", name: { ru: "Стратег", en: "Strategist" }, desc: { ru: "Потрачено 10 очков навыков", en: "Spend 10 skill points" } },
+  { id: "speedA", icon: "🌪️", name: { ru: "Ветер", en: "Wind" }, desc: { ru: "10 км бега суммарно", en: "10 km of running total" } },
 ];
